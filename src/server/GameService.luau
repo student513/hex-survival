@@ -1,36 +1,39 @@
---
-local CollectionService = game:GetService("CollectionService")
-local Players = game:GetService("Players")
+local CollectionService = game:GetService('CollectionService')
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local UpdateStatus = ReplicatedStorage:WaitForChild("UpdateStatus")
 
 local GameService = {}
 
--- 설정값
-local MIN_PLAYERS = 1 -- 테스트를 위해 1명으로 설정 (나중에 8로 변경)
+-- 기획 설정값
+local MIN_PLAYERS = 1 -- 테스트용 (실제 출시 시 8로 변경)
+local MAX_PLAYERS = 8
 local COUNTDOWN_TIME = 10
 
 function GameService.startLoop()
-	print("게임 루프 시작 대기 중...")
+	print("게임 루프 가동 중...")
 
 	while true do
-		-- 1. 인원 충족 대기
+		-- 1. 인원 대기 단계
 		repeat
+			local currentCount = #Players:GetPlayers()
+			-- 서버가 모든 클라이언트에게 현재 인원 정보 전송
+			UpdateStatus:FireAllClients("Waiting", currentCount, MAX_PLAYERS)
 			task.wait(1)
 		until #Players:GetPlayers() >= MIN_PLAYERS
 
-		print("인원이 충족되었습니다. 카운트다운 시작!")
-
-		-- 2. 카운트다운 (나중에 화면 UI에 표시할 예정)
+		-- 2. 카운트다운 단계
 		for i = COUNTDOWN_TIME, 1, -1 do
-			print("게임 시작까지: " .. i)
+			UpdateStatus:FireAllClients("Countdown", i)
 			task.wait(1)
 		end
 
-		-- 3. 대기실 바닥 제거 (투하!)
-		print("투하!!!")
+		-- 3. 게임 시작 (투하!)
+		UpdateStatus:FireAllClients("Start")
 		GameService.releasePlayers()
 
-		-- 일단 한 판이 시작되면 루프를 잠시 멈추거나
-		-- 나중에 승리자 판정 로직이 들어갈 곳입니다.
+		-- 일단 한 판이 시작되면 대기 (나중에 승리 로직 추가 시 루프 재설정)
 		break
 	end
 end
@@ -41,6 +44,7 @@ function GameService.releasePlayers()
 		if part:IsA("BasePart") then
 			part.CanCollide = false
 			part.Transparency = 1
+			task.delay(1, function() part:Destroy() end)
 		end
 	end
 end
