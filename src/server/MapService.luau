@@ -74,33 +74,45 @@ function MapService.generateMap()
 	local xOffset = HEX_WIDTH + GAP
 	local zOffset = (HEX_TALL * 0.75) + (GAP * 0.866)
 
-	for floor = 1, HexConstants.FLOORS_COUNT do
+for floor = 1, HexConstants.FLOORS_COUNT do
 		local floorFolder = Instance.new("Folder", mapFolder)
 		floorFolder.Name = "Floor_" .. floor
 
-		-- 시작 높이와 층간 간격을 반영
 		local yPos = HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE)
 		local delayTime = HexConstants.GET_DELAY_TIME(floor)
+
+		-- [수정] 보수적인 빈칸 확률 계산 (최대 15%)
+		-- 8층: 0% / 1층: 15% 가 되도록 계산
+		local maxGapPercent = 15
+		local gapProbability = 0
+
+		if floor < HexConstants.FLOORS_COUNT then
+			-- 층이 내려갈수록(floor 숫자가 작아질수록) 확률 증가
+			gapProbability = (HexConstants.FLOORS_COUNT - floor) * (maxGapPercent / (HexConstants.FLOORS_COUNT - 1))
+		end
 
 		for q = -HexConstants.GRID_SIZE, HexConstants.GRID_SIZE do
 			for r = math.max(-HexConstants.GRID_SIZE, -q - HexConstants.GRID_SIZE), math.min(HexConstants.GRID_SIZE, -q + HexConstants.GRID_SIZE) do
 
-				local newPart = hexTemplate:Clone()
+				-- [핵심] 설정된 확률로 발판 생성을 건너뜀
+				if gapProbability > 0 then
+					if math.random(1, 100) <= gapProbability then
+						continue -- 빈칸 생성
+					end
+				end
 
-				-- [핵심] 게임용 발판에만 HexPlatform 태그를 추가하여 FloorService가 감지하게 함
-				CollectionService:AddTag(newPart, "HexPlatform")
+				local newPart = hexTemplate:Clone()
+				game:GetService("CollectionService"):AddTag(newPart, "HexPlatform")
 
 				local x = xOffset * (q + r/2)
 				local z = zOffset * r
 
 				newPart.Position = Vector3.new(x, yPos, z)
 				newPart.Parent = floorFolder
-
-				-- 층별 데이터 심기
 				newPart:SetAttribute("DelayTime", delayTime)
 			end
 		end
-		print(floor .. "층 생성 완료")
+		print(string.format("Floor %d: Gap Chance %.1f%%", floor, gapProbability))
 	end
 end
 
