@@ -12,30 +12,38 @@ local MAX_PLAYERS = 8
 local COUNTDOWN_TIME = 10
 
 function GameService.startLoop()
-	print("게임 루프 가동 중...")
+    while true do
+        -- 1. Waiting for players
+        repeat
+            local currentCount = #Players:GetPlayers()
+            UpdateStatus:FireAllClients("Waiting", currentCount, MAX_PLAYERS)
+            task.wait(1)
+        until #Players:GetPlayers() >= MIN_PLAYERS
 
-	while true do
-		-- 1. 인원 대기 단계
-		repeat
-			local currentCount = #Players:GetPlayers()
-			-- 서버가 모든 클라이언트에게 현재 인원 정보 전송
-			UpdateStatus:FireAllClients("Waiting", currentCount, MAX_PLAYERS)
-			task.wait(1)
-		until #Players:GetPlayers() >= MIN_PLAYERS
+        -- 2. Countdown
+        for i = COUNTDOWN_TIME, 1, -1 do
+            UpdateStatus:FireAllClients("Countdown", i)
+            task.wait(1)
+        end
 
-		-- 2. 카운트다운 단계
-		for i = COUNTDOWN_TIME, 1, -1 do
-			UpdateStatus:FireAllClients("Countdown", i)
-			task.wait(1)
-		end
+        -- 3. Game Start
+        UpdateStatus:FireAllClients("Start")
+        GameService.releasePlayers()
 
-		-- 3. 게임 시작 (투하!)
-		UpdateStatus:FireAllClients("Start")
-		GameService.releasePlayers()
+        -- 4. Survival Tracking (생존 인원 체크 루프)
+        -- 실제로는 캐릭터가 죽거나 맵 밖으로 나갈 때 체크해야 하지만,
+        -- 우선은 실시간으로 인원수를 보내주는 로직을 가동합니다.
+        while #Players:GetPlayers() > 0 do
+            local aliveCount = #Players:GetPlayers()
+            UpdateStatus:FireAllClients("UpdateSurvival", aliveCount)
+            task.wait(0.5)
 
-		-- 일단 한 판이 시작되면 대기 (나중에 승리 로직 추가 시 루프 재설정)
-		break
-	end
+            -- 최후의 1인이 남으면 루프 종료 (나중에 승리 로직 추가)
+            if aliveCount <= 1 and MIN_PLAYERS > 1 then break end
+        end
+
+        break
+    end
 end
 
 function GameService.releasePlayers()
