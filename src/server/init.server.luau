@@ -10,6 +10,8 @@ print("서버 시스템 초기화 중...")
 -- 1. 맵 생성
 MapService.generateMap()
 MapService.createLobby() -- 대기실 세트(바닥+벽+스폰) 생성
+MapService.createKillZone()
+
 -- 2. 발판 이벤트 연결
 FloorService.init()
 

@@ -104,4 +104,30 @@ function MapService.generateMap()
 	end
 end
 
+function MapService.createKillZone()
+	local size = 2048 -- 맵 전체를 덮는 충분한 크기
+	local height = 20 -- 1층(130)보다 훨씬 아래인 지점
+
+	local killPart = Instance.new("Part")
+	killPart.Name = "KillZone"
+	killPart.Size = Vector3.new(size, 2, size)
+	killPart.Position = Vector3.new(0, height, 0)
+	killPart.Anchored = true
+	killPart.CanCollide = false -- 통과할 수 있어야 함
+	killPart.Transparency = 1 -- 테스트를 위해 반투명하게 (나중에 1로 변경 가능)
+	killPart.Material = Enum.Material.Neon
+	killPart.Parent = workspace
+
+	-- 닿으면 죽는 이벤트 연결
+	killPart.Touched:Connect(function(hit)
+		local character = hit.Parent
+		local humanoid = character:FindFirstChild("Humanoid")
+		if humanoid then
+			humanoid.Health = 0 -- 즉사
+		end
+	end)
+
+	print("🔥 Kill Zone (Lava) created at height: " .. height)
+end
+
 return MapService
