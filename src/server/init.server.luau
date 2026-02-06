@@ -1,15 +1,21 @@
 --
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local FloorService = require(script:WaitForChild("FloorService"))
-local MapService = require(script:WaitForChild("MapService"))
+local FloorService = require(script:WaitForChild('FloorService'))
+local GameService = require(script:WaitForChild('GameService'))
+local MapService = require(script:WaitForChild('MapService'))
 
 print("서버 시스템 초기화 중...")
 
--- 1. 먼저 맵을 생성합니다.
+-- 1. 맵 생성
 MapService.generateMap()
 
--- 2. 생성된 맵의 발판들에 터치 이벤트를 연결합니다.
+-- 2. 발판 이벤트 연결
 FloorService.init()
 
-print("헥사 서바이벌 준비 완료!")
+-- 3. 게임 루프 시작 (대기실 로직 가동)
+task.spawn(function()
+	GameService.startLoop()
+end)
+
+print("헥사 서바이벌 모든 시스템 준비 완료!")
