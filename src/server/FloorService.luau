@@ -31,8 +31,10 @@ local function handleTouch(part: BasePart)
 	end)
 end
 
+--
 function FloorService.init()
-	for _, part in CollectionService:GetTagged("HexPlatform") do
+	-- 1. 이미 존재하는 발판들에 이벤트 연결
+	local function connectPart(part)
 		if part:IsA("BasePart") then
 			part.Touched:Connect(function(hit)
 				if hit.Parent:FindFirstChild("Humanoid") then
@@ -41,6 +43,14 @@ function FloorService.init()
 			end)
 		end
 	end
+
+	-- 현재 있는 것들 연결
+	for _, part in CollectionService:GetTagged("HexPlatform") do
+		connectPart(part)
+	end
+
+	-- 2. [핵심] 앞으로 생성될(MapService가 만들) 발판들도 자동으로 감지하여 연결
+	CollectionService:GetInstanceAddedSignal("HexPlatform"):Connect(connectPart)
 end
 
 return FloorService
