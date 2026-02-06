@@ -26,7 +26,7 @@ function MapService.generateMap()
 		local floorFolder = Instance.new("Folder", mapFolder)
 		floorFolder.Name = "Floor_" .. floor
 
-		local yPos = floor * HexConstants.FLOOR_DISTANCE
+	  local yPos = HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE)
 		local delayTime = HexConstants.GET_DELAY_TIME(floor)
 
 		for q = -HexConstants.GRID_SIZE, HexConstants.GRID_SIZE do
