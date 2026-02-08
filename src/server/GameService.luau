@@ -3,115 +3,118 @@ local Players = game:GetService('Players')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local UpdateStatus = ReplicatedStorage:WaitForChild("UpdateStatus")
 
--- [중요] 자동 부활 방지 및 시스템 설정
+-- 자동 부활 차단
 Players.CharacterAutoLoads = false
 
 local GameService = {}
-local MIN_PLAYERS = 8  -- Phase 1 기준 인원
-local MAX_PLAYERS = 12 -- Phase 3 최대 인원
-local COUNTDOWN_TIME = 15
-
-local isGameStarted = false
+local MIN_PLAYERS = 1 -- 테스트용 (기획: 8명)
+local MAX_PLAYERS = 12
+local COUNTDOWN_TIME = 10
+local INTERMISSION_TIME = 7
+local lastWinnerName = "None"
 
 function GameService.init()
-    Players.PlayerAdded:Connect(function(player)
-        local currentCount = #Players:GetPlayers()
-        -- 정원 및 게임 진행 상태 체크
-        if not isGameStarted and currentCount <= MAX_PLAYERS then
-            player:LoadCharacter()
-        else
-            warn(player.Name .. " joined but match is full or in progress.")
-        end
-    end)
+	Players.PlayerAdded:Connect(function(player)
+		print("[SERVER] New Player Joined: " .. player.Name)
+		player:LoadCharacter()
+	end)
 end
 
 function GameService.releasePlayers()
-    local lobbyParts = CollectionService:GetTagged("LobbyTag")
-    for _, part in lobbyParts do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-            part.Transparency = 1
-            task.delay(1, function() part:Destroy() end)
-        end
-    end
+	print("[SERVER] Game Start: Destroying Lobby")
+	local lobbyParts = CollectionService:GetTagged("LobbyTag")
+	for _, part in lobbyParts do
+		if part:IsA("BasePart") then
+			part.CanCollide = false
+			part.Transparency = 1
+			task.delay(1, function() if part then part:Destroy() end end)
+		end
+	end
 end
 
 function GameService.startLoop()
-    GameService.init()
+	print("[SERVER] Game System Initialized")
+	GameService.init()
+	local MapService = require(script.Parent.MapService)
 
-    while true do
-        isGameStarted = false
+	while true do
+		-- [Phase 0] Lobby Setup & Data Prep (사전 준비 단계)
+		print("[SERVER] Phase 0: Lobby Setup")
 
-        -- 1. Phase 1: Idle (인원 대기)
-        repeat
-            local currentCount = #Players:GetPlayers()
-            UpdateStatus:FireAllClients("Waiting", currentCount, MIN_PLAYERS)
-            task.wait(1)
-        until #Players:GetPlayers() >= MIN_PLAYERS
+		-- 1. 대기실 생성
+		MapService.createLobby(lastWinnerName)
 
-        -- 2. Phase 2: Pre-Start (시작 예고)
-        UpdateStatus:FireAllClients("PreStart")
-        task.wait(2)
+		-- 2. [핵심] 신호 전송 전 인원수 미리 계산
+		local currentCount = #Players:GetPlayers()
 
-        -- 3. Phase 3: Late Entry (메인 카운트다운)
-        for i = COUNTDOWN_TIME, 1, -1 do
-            local currentCount = #Players:GetPlayers()
-            -- [MAX_PLAYERS 활용] 12명 꽉 차면 즉시 시작
-            if currentCount >= MAX_PLAYERS then
-                UpdateStatus:FireAllClients("Countdown", "FULL!", currentCount)
-                task.wait(1)
-                break
-            end
-            UpdateStatus:FireAllClients("Countdown", i, currentCount)
-            task.wait(1)
-        end
+		-- 3. ResetMatch 신호에 인원수 데이터를 주입하여 전송 (nil 에러 방지)
+		UpdateStatus:FireAllClients("ResetMatch", currentCount, MIN_PLAYERS)
 
-        -- 4. Game Start
-        isGameStarted = true
-        UpdateStatus:FireAllClients("Start")
-        GameService.releasePlayers()
+		-- 4. 전원 부활 및 대기실 소환
+		for _, player in ipairs(Players:GetPlayers()) do
+			player:LoadCharacter()
+		end
 
-        -- 5. Survival Tracking (최후의 1인 판정)
-        local winner = nil
-        while true do
-            local alivePlayers = {}
-            local allPlayers = Players:GetPlayers()
+		-- 5. 물리적 안착을 위한 대기
+		task.wait(3)
 
-            for _, player in ipairs(allPlayers) do
-                local char = player.Character
-                if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
-                    table.insert(alivePlayers, player)
-                end
-            end
+		-- [Phase 1] Waiting (실시간 인원 체크)
+		print("[SERVER] Phase 1: Waiting for Players...")
+		repeat
+			local cCount = #Players:GetPlayers()
+			UpdateStatus:FireAllClients("Waiting", cCount, MIN_PLAYERS)
+			task.wait(1)
+		until #Players:GetPlayers() >= MIN_PLAYERS
 
-            UpdateStatus:FireAllClients("UpdateSurvival", #alivePlayers)
+		-- [Phase 2] Preparing (카운트다운)
+		print("[SERVER] Phase 2: Preparing Match")
+		for i = COUNTDOWN_TIME, 1, -1 do
+			UpdateStatus:FireAllClients("Preparing", i, #Players:GetPlayers(), MAX_PLAYERS)
+			task.wait(1)
+		end
 
-            if #alivePlayers <= 1 and #allPlayers >= 1 then
-                winner = alivePlayers[1] or allPlayers[1]
-                for _, p in ipairs(allPlayers) do
-                    local result = (p == winner) and "Victory" or "Defeat"
-                    UpdateStatus:FireClient(p, "Result", result, winner.Name)
-                end
-                break
-            end
-            task.wait(0.5)
-        end
+		-- [Phase 3] Game Start
+		print("[SERVER] Phase 3: Start!")
+		UpdateStatus:FireAllClients("Start")
+		GameService.releasePlayers()
 
-        -- 6. [신규] 명예의 전당 (Intermission) - 7초간 승리자 클로즈업
-        for i = 7, 1, -1 do
-            UpdateStatus:FireAllClients("IntermissionCountdown", i)
-            task.wait(1)
-        end
+		-- [Phase 4] Survival & Spectating Loop
+		local winner = nil
+		while true do
+			local alivePlayers = {}
+			local allPlayers = Players:GetPlayers()
+			for _, player in ipairs(allPlayers) do
+				local char = player.Character
+				if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+					table.insert(alivePlayers, player.Name)
+				end
+			end
 
-        -- 7. [신규] 로비 복귀 (Round Over) - 3초간 시퀀스
-        UpdateStatus:FireAllClients("RoundOver")
-        task.wait(3)
+			UpdateStatus:FireAllClients("UpdateSurvival", #alivePlayers, alivePlayers)
 
-        -- 다음 라운드 준비 (캐릭터 재생성)
-        for _, p in ipairs(Players:GetPlayers()) do
-            p:LoadCharacter()
-        end
-    end
+			if #alivePlayers <= 1 and #allPlayers >= 1 then
+				local winnerName = alivePlayers[1] or (allPlayers[1] and allPlayers[1].Name)
+				winner = Players:FindFirstChild(winnerName)
+				lastWinnerName = winnerName
+
+				for _, p in ipairs(allPlayers) do
+					local result = (p.Name == winnerName) and "Victory" or "Defeat"
+					UpdateStatus:FireClient(p, "Result", result, winnerName)
+				end
+				break
+			end
+			task.wait(0.5)
+		end
+
+		-- [Phase 5] Intermission
+		print("[SERVER] Phase 5: Intermission")
+		for i = INTERMISSION_TIME, 1, -1 do
+			UpdateStatus:FireAllClients("Intermission", i)
+			task.wait(1)
+		end
+
+		print("[SERVER] --- Round Cycle End ---")
+	end
 end
 
 return GameService

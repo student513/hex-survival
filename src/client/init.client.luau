@@ -1,5 +1,6 @@
 local Players = game:GetService('Players')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 
 local Player = Players.LocalPlayer
@@ -13,83 +14,112 @@ local spectateLabel = screenGui:WaitForChild("SpectateLabel")
 local victoryLabel = screenGui:WaitForChild("VictoryLabel")
 local defeatLabel = screenGui:WaitForChild("DefeatLabel")
 
-local function resetUI()
-    statusLabel.Visible = true
-    statusLabel.TextSize = 40
-    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    survivorLabel.Visible = false
-    spectateLabel.Visible = false
-    victoryLabel.Visible = false
-    defeatLabel.Visible = false
-    -- 카메라를 자신의 캐릭터로 복구
-    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
-        Camera.CameraSubject = Player.Character.Humanoid
-    end
+local aliveList = {}
+local spectateIndex = 1
+local isSpectating = false
+
+-- 관전 대상 물리적 전환
+local function changeSpectate(direction)
+	if #aliveList == 0 then return end
+
+	isSpectating = true
+	spectateIndex = spectateIndex + direction
+	if spectateIndex > #aliveList then spectateIndex = 1 end
+	if spectateIndex < 1 then spectateIndex = #aliveList end
+
+	local targetName = aliveList[spectateIndex]
+	local targetPlayer = Players:FindFirstChild(targetName)
+
+	if targetPlayer and targetPlayer.Character then
+		local hum = targetPlayer.Character:FindFirstChild("Humanoid")
+		if hum then
+			Camera.CameraType = Enum.CameraType.Custom
+			Camera.CameraSubject = hum
+			spectateLabel.Text = "SPECTATING: " .. string.upper(targetName)
+			spectateLabel.Visible = true
+		end
+	end
 end
 
-UpdateStatus.OnClientEvent:Connect(function(state, val1, val2)
-    if state == "Waiting" then
-        resetUI()
-        statusLabel.Text = string.format("WAITING FOR PLAYERS (%d/%d)", val1, val2)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.Left then changeSpectate(-1)
+	elseif input.KeyCode == Enum.KeyCode.Right then changeSpectate(1) end
+end)
 
-    elseif state == "PreStart" then
-        statusLabel.TextSize = 50
-        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-        statusLabel.Text = "NEXT MATCH STARTING SOON!"
+-- UI 및 카메라 초기화 (데이터가 있을 때만 텍스트 갱신)
+local function resetMatchUI(val1, val2)
+	-- 기본 UI 가시성 설정
+	statusLabel.Visible = true
+	survivorLabel.Visible = false
+	spectateLabel.Visible = false
+	victoryLabel.Visible = false
+	defeatLabel.Visible = false
+	isSpectating = false
 
-    elseif state == "Countdown" then
-        statusLabel.TextSize = 100
-        if val1 == "FULL!" then
-            statusLabel.Text = "MATCH FULL!"
-        else
-            statusLabel.Text = tostring(val1)
-            -- 하단에 현재 입장 인원 표시
-            survivorLabel.Visible = true
-            survivorLabel.Text = string.format("JOINED: %d / 12", val2)
-        end
+	-- [방어 로직] 데이터가 유효할 때만 텍스트 업데이트
+	if val1 ~= nil and val2 ~= nil then
+		statusLabel.Text = string.format("WAITING FOR PLAYERS\n(%d / %d)", val1, val2)
+	else
+		statusLabel.Text = "PREPARING NEXT ROUND..."
+	end
 
-    elseif state == "Start" then
-        statusLabel.Text = "GO!"
-        task.wait(1)
-        statusLabel.Visible = false
-        survivorLabel.Visible = true
+	statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 
-    elseif state == "UpdateSurvival" then
-        survivorLabel.Text = string.format("SURVIVORS: %d", val1)
+	-- 카메라 복구
+	Camera.CameraType = Enum.CameraType.Custom
+	if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+		Camera.CameraSubject = Player.Character.Humanoid
+	end
+end
 
-    elseif state == "Result" then
-        local resultType = val1 -- "Victory" or "Defeat"
-        local winnerName = val2
-        survivorLabel.Visible = false
+UpdateStatus.OnClientEvent:Connect(function(state, val1, val2, val3)
+	-- [ResetMatch] 단계에서 서버가 보낸 인원수를 주입받음
+	if state == "ResetMatch" then
+		print("[CLIENT] ResetMatch Signal:", val1, val2)
+		resetMatchUI(val1, val2)
+		return
+	end
 
-        if resultType == "Victory" then
-            victoryLabel.Text = "VICTORY!\nWINNER: " .. winnerName
-            victoryLabel.Visible = true
-        else
-            defeatLabel.Text = "ELIMINATED\nWINNER: " .. winnerName
-            defeatLabel.Visible = true
-        end
+	if state == "Waiting" then
+		if val1 ~= nil and val2 ~= nil then
+			statusLabel.TextSize = 40
+			statusLabel.Text = string.format("WAITING FOR PLAYERS\n(%d / %d)", val1, val2)
+		end
 
-        -- [명예의 전당] 승리자 클로즈업 관전
-        local winner = Players:FindFirstChild(winnerName)
-        if winner and winner.Character then
-            Camera.CameraSubject = winner.Character:FindFirstChild("Humanoid")
-            spectateLabel.Text = "WINNER FOCUS: " .. winnerName
-            spectateLabel.Visible = true
-        end
+	elseif state == "Preparing" then
+		statusLabel.Visible = true
+		statusLabel.Text = string.format("NEXT MATCH STARTING IN %d\nJOINED: %d / %d", val1, val2, val3)
 
-    elseif state == "IntermissionCountdown" then
-        -- 상단에 복귀 예고 표시
-        statusLabel.Visible = true
-        statusLabel.TextSize = 30
-        statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        statusLabel.Text = string.format("RETURNING TO LOBBY IN %d...", val1)
+	elseif state == "Start" then
+		statusLabel.Text = "GO!"
+		task.wait(1)
+		statusLabel.Visible = false
+		survivorLabel.Visible = true
 
-    elseif state == "RoundOver" then
-        -- 라운드 종료 브릿지 UI
-        resetUI()
-        statusLabel.TextSize = 60
-        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        statusLabel.Text = "ROUND OVER\nGET READY!"
-    end
+	elseif state == "UpdateSurvival" then
+		aliveList = val2 or {}
+		survivorLabel.Text = string.format("SURVIVORS: %d", val1)
+
+		local char = Player.Character
+		if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health <= 0 then
+			if not isSpectating then changeSpectate(0) end
+		end
+
+	elseif state == "Result" then
+		survivorLabel.Visible = false
+		if val1 == "Victory" then
+			isSpectating = false
+			victoryLabel.Text = "VICTORY!\nWINNER: " .. string.upper(val2)
+			victoryLabel.Visible = true
+		else
+			defeatLabel.Text = "ELIMINATED\nWINNER: " .. string.upper(val2)
+			defeatLabel.Visible = true
+			changeSpectate(0)
+		end
+
+	elseif state == "Intermission" then
+		statusLabel.Visible = true
+		statusLabel.Text = "ROUND OVER\nRETURNING TO LOBBY IN " .. tostring(val1)
+	end
 end)

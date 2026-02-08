@@ -10,7 +10,7 @@ local HexConstants = require(Shared:WaitForChild("HexConstants"))
 local MapService = {}
 
 --
-function MapService.createLobby()
+function MapService.createLobby(winnerName)
 	local lobbyCenter = Vector3.new(0, 500, 0)
 	local lobbySize = 70 -- 가로세로 150의 넉넉한 크기
 	local wallHeight = 40
@@ -56,6 +56,24 @@ function MapService.createLobby()
 	game:GetService("CollectionService"):AddTag(spawnLoc, "LobbyTag")
 
 	print("✅ 사각형 대기실 생성 완료 (틈새 없음)")
+
+  -- [추가] 명예의 전당 (Hall of Fame) 보드
+	local board = Instance.new("Part")
+	board.Name = "HallOfFame"
+	board.Size = Vector3.new(20, 10, 1)
+	board.Position = Vector3.new(0, 515, 34) -- 대기실 벽면 위치에 맞춰 조정
+	board.Anchored = true
+	board.Color = Color3.fromRGB(30, 30, 30)
+	board.Parent = workspace
+	game:GetService("CollectionService"):AddTag(board, "LobbyTag")
+
+	local surfaceGui = Instance.new("SurfaceGui", board)
+	local textLabel = Instance.new("TextLabel", surfaceGui)
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	textLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- 골드 색상
+	textLabel.TextScaled = true
+	textLabel.Text = "🏆 LAST WINNER: " .. (winnerName or "None")
 end
 
 -- 2. 게임용 8층 맵 생성 함수
