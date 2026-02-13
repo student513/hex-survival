@@ -11,11 +11,10 @@ local MAX_PLAYERS = 12
 local COUNTDOWN_TIME = 10
 local INTERMISSION_TIME = 7
 local lastWinnerName = "None"
-local playerStats = {} -- { [Name] = {wins = 0, lastWinTime = 0} }
+local playerStats = {}
 
 function GameService.init()
 	local MapService = require(script.Parent.MapService)
-
 	Players.PlayerAdded:Connect(function(player)
 		if not playerStats[player.Name] then
 			playerStats[player.Name] = {wins = 0, lastWinTime = 0}
@@ -25,7 +24,7 @@ function GameService.init()
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
-		playerStats[player.Name] = nil
+		playerStats[player.Name] = nil -- 퇴장 시 정보 삭제
 		MapService.updateRanking(playerStats)
 	end)
 end
@@ -46,20 +45,19 @@ function GameService.startLoop()
 	local MapService = require(script.Parent.MapService)
 
 	while true do
-		-- [Phase 0] Lobby Setup
+		-- [Phase 0]
+		MapService.generateMap()
 		MapService.createLobby(lastWinnerName, playerStats)
 		UpdateStatus:FireAllClients("ResetMatch", #Players:GetPlayers(), MIN_PLAYERS)
 
-		-- 전원 부활 및 대기실 강제 텔레포트
 		for _, player in ipairs(Players:GetPlayers()) do
 			player:LoadCharacter()
-			-- 캐릭터 로딩 후 로비 좌표(0, 505, 0)로 강제 이동하여 추락 방지
-			local character = player.Character or player.CharacterAdded:Wait()
-			character:PivotTo(CFrame.new(0, 505, 0))
+			local char = player.Character or player.CharacterAdded:Wait()
+			char:PivotTo(CFrame.new(0, 505, 0)) -- 강제 텔레포트
 		end
 		task.wait(3)
 
-		-- [Phase 1] Waiting
+		-- [Phase 1] 대기
 		repeat
 			MapService.updateRanking(playerStats)
 			UpdateStatus:FireAllClients("Waiting", #Players:GetPlayers(), MIN_PLAYERS)
@@ -92,7 +90,7 @@ function GameService.startLoop()
 				lastWinnerName = wName
 
 				if playerStats[wName] then
-					playerStats[wName].wins += 1
+					playerStats[wName].wins += 1 -- 1pt 획득
 					playerStats[wName].lastWinTime = os.time()
 				end
 				MapService.updateRanking(playerStats)
@@ -106,7 +104,7 @@ function GameService.startLoop()
 			task.wait(0.5)
 		end
 
-		-- [Phase 5] 인터미션
+		-- [Phase 5]
 		for i = INTERMISSION_TIME, 1, -1 do
 			UpdateStatus:FireAllClients("Intermission", i)
 			task.wait(1)
