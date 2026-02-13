@@ -12,7 +12,6 @@ local HexConstants = {
 	-- 타입별 시각 설정 (직관성 극대화)
 	FLOOR_SETTINGS = {
 		Normal = { Color = Color3.fromRGB(163, 162, 165), Material = Enum.Material.Plastic },
-		Ice    = { Color = Color3.fromRGB(160, 230, 255), Material = Enum.Material.Glass },
 		Magma  = { Color = Color3.fromRGB(255, 80, 0), Material = Enum.Material.Neon },
 		Bounce = { Color = Color3.fromRGB(100, 255, 100), Material = Enum.Material.Rubber },
 		Turbo  = { Color = Color3.fromRGB(255, 255, 0), Material = Enum.Material.Neon }

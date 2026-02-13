@@ -175,7 +175,7 @@ function MapService.generateMap()
 
 		local typeName = "Normal"
 		if floor < HexConstants.FLOORS_COUNT and math.random(1, 100) <= HexConstants.SPECIAL_FLOOR_CHANCE then
-			typeName = ({"Ice", "Magma", "Bounce", "Turbo"})[math.random(1, 4)]
+			typeName = ({"Magma", "Bounce", "Turbo"})[math.random(1, 4)]
 		end
 		floorFolder:SetAttribute("FloorType", typeName)
 
@@ -190,11 +190,7 @@ function MapService.generateMap()
 				CollectionService:AddTag(newPart, "HexPlatform")
 
 				-- 시각적 설정
-				if typeName == "Ice" then
-					newPart.Color = Color3.fromRGB(160, 230, 255); newPart.Material = Enum.Material.Glass
-					-- [수정] Density 에러 해결: 첫 번째 인자를 0.7(기본값)로 변경
-					newPart.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0, 0.5)
-				elseif typeName == "Magma" then
+				if typeName == "Magma" then
 					newPart.Color = Color3.fromRGB(255, 80, 0); newPart.Material = Enum.Material.Neon
 				elseif typeName == "Bounce" then
 					newPart.Color = Color3.fromRGB(100, 255, 100); newPart.Material = Enum.Material.Rubber
