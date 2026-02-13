@@ -8,8 +8,8 @@ Players.CharacterAutoLoads = false
 local GameService = {}
 local MIN_PLAYERS = 1
 local MAX_PLAYERS = 12
-local COUNTDOWN_TIME = 10
-local INTERMISSION_TIME = 7
+local COUNTDOWN_TIME = 3
+local INTERMISSION_TIME = 70
 local lastWinnerName = "None"
 local playerStats = {}
 

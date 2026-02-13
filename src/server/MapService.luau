@@ -160,40 +160,49 @@ function MapService.createLobby(winnerName, statsTable)
 end
 
 -- [맵 생성] 층별 랜덤 빈칸 로직 포함
+-- [맵 생성] 변종 층 및 직관적 비주얼 적용
 function MapService.generateMap()
 	local oldMap = workspace:FindFirstChild("Map")
 	if oldMap then oldMap:Destroy() end
 
-	local hexTemplate = ServerStorage:WaitForChild("HexPart", 5)
-	if not hexTemplate then return end
-
+	local hexTemplate = ServerStorage:WaitForChild("HexPart")
 	local mapFolder = Instance.new("Folder", workspace)
 	mapFolder.Name = "Map"
-
-	local maxGapPercent = 15
 
 	for floor = 1, HexConstants.FLOORS_COUNT do
 		local floorFolder = Instance.new("Folder", mapFolder)
 		floorFolder.Name = "Floor_" .. floor
-		local yPos = HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE)
-		local delayTime = HexConstants.GET_DELAY_TIME(floor)
 
-		local gapProbability = 0
-		if floor < HexConstants.FLOORS_COUNT then
-			gapProbability = (HexConstants.FLOORS_COUNT - floor) * (maxGapPercent / (HexConstants.FLOORS_COUNT - 1))
+		local typeName = "Normal"
+		if floor < HexConstants.FLOORS_COUNT and math.random(1, 100) <= HexConstants.SPECIAL_FLOOR_CHANCE then
+			typeName = ({"Ice", "Magma", "Bounce", "Turbo"})[math.random(1, 4)]
 		end
+		floorFolder:SetAttribute("FloorType", typeName)
+
+		local delayTime = HexConstants.GET_DELAY_TIME(floor)
+		if typeName == "Magma" then delayTime /= 2.5 end
 
 		for q = -HexConstants.GRID_SIZE, HexConstants.GRID_SIZE do
 			for r = math.max(-HexConstants.GRID_SIZE, -q - HexConstants.GRID_SIZE), math.min(HexConstants.GRID_SIZE, -q + HexConstants.GRID_SIZE) do
-				if gapProbability > 0 and math.random(1, 100) <= gapProbability then
-					continue
-				end
+				if math.random(1, 100) <= 15 and floor < HexConstants.FLOORS_COUNT then continue end
 
 				local newPart = hexTemplate:Clone()
 				CollectionService:AddTag(newPart, "HexPlatform")
-				local x = 8.66 * 1.02 * (q + r/2)
-				local z = 10 * 0.75 * 1.02 * r
-				newPart.Position = Vector3.new(x, yPos, z)
+
+				-- 시각적 설정
+				if typeName == "Ice" then
+					newPart.Color = Color3.fromRGB(160, 230, 255); newPart.Material = Enum.Material.Glass
+					-- [수정] Density 에러 해결: 첫 번째 인자를 0.7(기본값)로 변경
+					newPart.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0, 0.5)
+				elseif typeName == "Magma" then
+					newPart.Color = Color3.fromRGB(255, 80, 0); newPart.Material = Enum.Material.Neon
+				elseif typeName == "Bounce" then
+					newPart.Color = Color3.fromRGB(100, 255, 100); newPart.Material = Enum.Material.Rubber
+				elseif typeName == "Turbo" then
+					newPart.Color = Color3.fromRGB(255, 255, 0); newPart.Material = Enum.Material.Neon
+				end
+
+				newPart.Position = Vector3.new(8.66 * 1.02 * (q + r/2), HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE), 10 * 0.75 * 1.02 * r)
 				newPart.Parent = floorFolder
 				newPart:SetAttribute("DelayTime", delayTime)
 			end
