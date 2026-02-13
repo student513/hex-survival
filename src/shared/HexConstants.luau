@@ -7,7 +7,7 @@ local HexConstants = {
 	GRID_SIZE = 8,
 
 	-- [추가] 변종 층 설정
-	SPECIAL_FLOOR_CHANCE = 100, -- 변종 층이 생성될 확률 (%)
+	SPECIAL_FLOOR_CHANCE = 25, -- 변종 층이 생성될 확률 (%)
 
 	-- 타입별 시각 설정 (직관성 극대화)
 	FLOOR_SETTINGS = {
