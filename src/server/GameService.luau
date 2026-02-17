@@ -3,13 +3,15 @@ local Players = game:GetService('Players')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local UpdateStatus = ReplicatedStorage:WaitForChild("UpdateStatus")
 
+local LeaderManager = require(script.Parent.LeaderManager)
+
 Players.CharacterAutoLoads = false
 
 local GameService = {}
 local MIN_PLAYERS = 1
 local MAX_PLAYERS = 12
 local COUNTDOWN_TIME = 3
-local INTERMISSION_TIME = 70
+local INTERMISSION_TIME = 7
 local lastWinnerName = "None"
 local playerStats = {}
 
@@ -19,6 +21,12 @@ function GameService.init()
 		if not playerStats[player.Name] then
 			playerStats[player.Name] = {wins = 0, lastWinTime = 0}
 		end
+
+		player.CharacterAdded:Connect(function()
+			task.wait(0.1)
+			LeaderManager.updateCrown(playerStats)
+		end)
+
 		player:LoadCharacter()
 		MapService.updateRanking(playerStats)
 	end)
@@ -26,6 +34,7 @@ function GameService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		playerStats[player.Name] = nil -- 퇴장 시 정보 삭제
 		MapService.updateRanking(playerStats)
+		LeaderManager.updateCrown(playerStats)
 	end)
 end
 
@@ -94,6 +103,10 @@ function GameService.startLoop()
 					playerStats[wName].lastWinTime = os.time()
 				end
 				MapService.updateRanking(playerStats)
+
+        -- 점수 갱신 후 랭킹 UI와 왕관 업데이트
+				MapService.updateRanking(playerStats)
+				LeaderManager.updateCrown(playerStats)
 
 				for _, p in ipairs(all) do
 					local res = (p.Name == wName) and "Victory" or "Defeat"
