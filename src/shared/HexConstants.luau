@@ -6,10 +6,19 @@ local HexConstants = {
 	START_HEIGHT = 100,
 	GRID_SIZE = 8,
 
-	-- [추가] 변종 층 설정
-	SPECIAL_FLOOR_CHANCE = 25, -- 변종 층이 생성될 확률 (%)
+	MIN_PLAYERS = 1,
+	MAX_PLAYERS = 12,
+	COUNTDOWN_TIME = 100,
+	INTERMISSION_TIME = 7,
 
-	-- 타입별 시각 설정 (직관성 극대화)
+	-- [아이템 밸런스 설정]
+	ITEM_SPAWN_CHANCE = 5,    -- 아이템 생성 확률 (%)
+	STUN_DURATION = 2,         -- 망치 스턴 지속 시간 (2초)
+	GLUE_MULTIPLIER = 1.5,     -- 접착제 소멸 시간 배율 (1.5배)
+	BAT_KNOCKBACK = 150,       -- 야구배트 밀치기 강도
+
+	SPECIAL_FLOOR_CHANCE = 25,
+
 	FLOOR_SETTINGS = {
 		Normal = { Color = Color3.fromRGB(163, 162, 165), Material = Enum.Material.Plastic },
 		Magma  = { Color = Color3.fromRGB(255, 80, 0), Material = Enum.Material.Neon },

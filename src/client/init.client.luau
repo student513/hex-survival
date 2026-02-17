@@ -66,5 +66,34 @@ UpdateStatus.OnClientEvent:Connect(function(state, val1, val2, val3)
 		else defeatLabel.Visible = true; defeatLabel.Text = "ELIMINATED\nWINNER: " .. val2; changeSpectate(0) end
 	elseif state == "Intermission" then
 		statusLabel.Visible = true; statusLabel.Text = "ROUND OVER\nRETURNING TO LOBBY IN " .. tostring(val1)
+  elseif state == "Stunned" then
+    local duration = val1 or 2
+    statusLabel.Visible = true
+    statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50) -- 붉은색 강조
+
+    -- 0.1초 단위로 카운트다운 표시 (예: STUN! : 2.0s)
+    task.spawn(function()
+      local timeLeft = duration
+      while timeLeft > 0 do
+          statusLabel.Text = string.format("STUN! : %.1fs", timeLeft)
+          task.wait(0.1)
+          timeLeft -= 0.1
+      end
+      statusLabel.Visible = false
+      statusLabel.TextColor3 = Color3.new(1, 1, 1) -- 색상 복구
+    end)
+  elseif state == "Swapped" then
+		-- [추가] Swapped UI 로직
+		statusLabel.Visible = true
+		statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- 흰색
+		statusLabel.Text = "Swapped!"
+
+		-- 2초 후 UI 숨기기
+		task.delay(2, function()
+			-- 스턴 등 다른 UI가 덮어씌우지 않았을 때만 닫기
+			if statusLabel.Text == "Swapped!" then
+				statusLabel.Visible = false
+			end
+		end)
 	end
 end)

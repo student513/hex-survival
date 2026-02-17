@@ -2,16 +2,13 @@ local CollectionService = game:GetService('CollectionService')
 local Players = game:GetService('Players')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local UpdateStatus = ReplicatedStorage:WaitForChild("UpdateStatus")
-
+local HexConstants = require(ReplicatedStorage.Shared.HexConstants)
 local LeaderManager = require(script.Parent.LeaderManager)
 
 Players.CharacterAutoLoads = false
 
 local GameService = {}
-local MIN_PLAYERS = 1
-local MAX_PLAYERS = 12
-local COUNTDOWN_TIME = 3
-local INTERMISSION_TIME = 7
+
 local lastWinnerName = "None"
 local playerStats = {}
 
@@ -57,7 +54,7 @@ function GameService.startLoop()
 		-- [Phase 0]
 		MapService.generateMap()
 		MapService.createLobby(lastWinnerName, playerStats)
-		UpdateStatus:FireAllClients("ResetMatch", #Players:GetPlayers(), MIN_PLAYERS)
+		UpdateStatus:FireAllClients("ResetMatch", #Players:GetPlayers(), HexConstants.MIN_PLAYERS)
 
 		for _, player in ipairs(Players:GetPlayers()) do
 			player:LoadCharacter()
@@ -69,13 +66,13 @@ function GameService.startLoop()
 		-- [Phase 1] 대기
 		repeat
 			MapService.updateRanking(playerStats)
-			UpdateStatus:FireAllClients("Waiting", #Players:GetPlayers(), MIN_PLAYERS)
+			UpdateStatus:FireAllClients("Waiting", #Players:GetPlayers(), HexConstants.MIN_PLAYERS)
 			task.wait(1)
-		until #Players:GetPlayers() >= MIN_PLAYERS
+		until #Players:GetPlayers() >= HexConstants.MIN_PLAYERS
 
 		-- [Phase 2, 3] 카운트다운 및 시작
-		for i = COUNTDOWN_TIME, 1, -1 do
-			UpdateStatus:FireAllClients("Preparing", i, #Players:GetPlayers(), MAX_PLAYERS)
+		for i = HexConstants.COUNTDOWN_TIME, 1, -1 do
+			UpdateStatus:FireAllClients("Preparing", i, #Players:GetPlayers(), HexConstants.MAX_PLAYERS)
 			task.wait(1)
 		end
 		UpdateStatus:FireAllClients("Start")
@@ -118,7 +115,7 @@ function GameService.startLoop()
 		end
 
 		-- [Phase 5]
-		for i = INTERMISSION_TIME, 1, -1 do
+		for i = HexConstants.INTERMISSION_TIME, 1, -1 do
 			UpdateStatus:FireAllClients("Intermission", i)
 			task.wait(1)
 		end
