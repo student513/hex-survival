@@ -20,7 +20,6 @@ function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunnin
 		local gui = board:FindFirstChild("SurfaceGui")
 		if not gui then continue end
 
-		-- [수정] UI를 끄지 않고 항상 보이게 유지
 		gui.Enabled = true
 
 		local title = gui:FindFirstChild("TitleLabel")
@@ -37,7 +36,6 @@ function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunnin
 				table.insert(displayList, {name = name, score = data.score, time = data.lastWinTime})
 			end
 
-			-- [추가] 표시할 플레이어 데이터가 없을 때 플레이스홀더 텍스트 렌더링
 			if #displayList == 0 then
 				local row = Instance.new("Frame", container)
 				row.Size = UDim2.new(1, 0, 0, 45)
@@ -106,6 +104,7 @@ function MapService.createMainLobby()
 	floor.Material = Enum.Material.Concrete
 	floor.Parent = workspace
 
+	-- 1. 매치 전광판 (남쪽 벽)
 	local board = Instance.new("Part")
 	board.Name = "MainMatchBoard"
 	board.Size = Vector3.new(40, 30, 1)
@@ -118,7 +117,6 @@ function MapService.createMainLobby()
 	gui.Name = "SurfaceGui"
 	gui.Face = Enum.NormalId.Front
 	gui.LightInfluence = 0
-	-- [수정] 생성 시 기본 상태를 true로 설정하여 텍스트가 즉시 보이게 함
 	gui.Enabled = true
 
 	local title = Instance.new("TextLabel", gui)
@@ -137,6 +135,7 @@ function MapService.createMainLobby()
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 10)
 
+	-- 2. 아이템 가이드 전광판 (서쪽 벽)
 	local guideBoard = Instance.new("Part")
 	guideBoard.Name = "ItemGuideBoard"
 	guideBoard.Size = Vector3.new(1, 30, 40)
@@ -194,6 +193,61 @@ function MapService.createMainLobby()
 		text.TextXAlignment = Enum.TextXAlignment.Left
 		text.Font = Enum.Font.GothamBold
 	end
+
+	-- ==========================================
+	-- 3. [추가] 규칙 전광판 (동쪽 벽)
+	-- ==========================================
+	local ruleBoard = Instance.new("Part")
+	ruleBoard.Name = "RuleBoard"
+	ruleBoard.Size = Vector3.new(1, 30, 40)
+	ruleBoard.Position = lobbyCenter + Vector3.new(49, 15, 0)
+	ruleBoard.Anchored = true
+	ruleBoard.Color = Color3.fromRGB(15, 15, 15)
+	ruleBoard.Parent = workspace
+
+	local ruleGui = Instance.new("SurfaceGui", ruleBoard)
+	ruleGui.Name = "SurfaceGui"
+	ruleGui.Face = Enum.NormalId.Left -- 동쪽 벽에서 로비 중앙을 바라보도록 설정
+	ruleGui.LightInfluence = 0
+
+	local ruleTitle = Instance.new("TextLabel", ruleGui)
+	ruleTitle.Size = UDim2.new(1, 0, 0, 60)
+	ruleTitle.BackgroundTransparency = 1
+	ruleTitle.TextColor3 = Color3.fromRGB(255, 170, 0)
+	ruleTitle.Text = "📜 GAME RULES"
+	ruleTitle.TextScaled = true
+	ruleTitle.Font = Enum.Font.GothamBlack
+
+	local rulesList = {
+		"1. SURVIVE OR FALL\nHexagons disappear shortly after you step on them. Don't fall into the Kill Zone!",
+		"2. WIN CONDITION\nBe the last person standing to win the round. Reach 3 Wins to become the Match Champion.",
+		"3. SPECIAL TILES & ITEMS\nWatch out for Magma, Bounce, or Turbo floors. Collect Items to gain an advantage.",
+    "4. LOBBY PARKOUR\nEnjoy Parkour while waiting! Reach the top to earn a special reward title."
+	}
+
+	local ruleListFrame = Instance.new("Frame", ruleGui)
+	ruleListFrame.Size = UDim2.new(1, -40, 1, -80)
+	ruleListFrame.Position = UDim2.new(0, 20, 0, 80)
+	ruleListFrame.BackgroundTransparency = 1
+
+	local ruleLayout = Instance.new("UIListLayout", ruleListFrame)
+	ruleLayout.Padding = UDim.new(0, 25)
+	ruleLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	for i, ruleText in ipairs(rulesList) do
+		local textLabel = Instance.new("TextLabel", ruleListFrame)
+		textLabel.Size = UDim2.new(1, 0, 0, 80)
+		textLabel.BackgroundTransparency = 1
+		textLabel.Text = ruleText
+		textLabel.TextColor3 = Color3.new(1, 1, 1)
+		textLabel.TextWrapped = true
+		textLabel.TextScaled = true
+		textLabel.TextXAlignment = Enum.TextXAlignment.Left
+		textLabel.TextYAlignment = Enum.TextYAlignment.Top
+		textLabel.Font = Enum.Font.GothamBold
+		textLabel.LayoutOrder = i
+	end
+	-- ==========================================
 
 	local parkourFolder = Instance.new("Folder", workspace)
 	parkourFolder.Name = "ParkourCourse"
