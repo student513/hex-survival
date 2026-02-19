@@ -5,29 +5,48 @@ local UpdateStatus = ReplicatedStorage:WaitForChild("UpdateStatus")
 
 local ItemManager = {}
 
--- 아이템 외형 생성 (필드용은 무조건 구체)
+-- 모든 면에 데칼을 입히는 함수
+local function applyDecals(part: BasePart, itemName: string)
+	local iconId = HexConstants.ITEM_ICONS[itemName]
+	if not iconId or iconId == "" then return end
+
+	local faces = Enum.NormalId:GetEnumItems()
+	for _, face in ipairs(faces) do
+		local decal = Instance.new("Decal")
+		decal.Texture = iconId
+		decal.Face = face
+		decal.Parent = part
+	end
+end
+
 function ItemManager.createItemModel(itemName: string, isField: boolean)
 	local part = Instance.new("Part")
-	part.Material = Enum.Material.Neon
 	part.CanCollide = false
 	part.Anchored = isField
 
 	if isField then
+		-- 필드 아이템: 완전히 투명한 구체에 이미지만 입힘
 		part.Shape = Enum.PartType.Ball
-		part.Size = Vector3.new(2.5, 2.5, 2.5)
-		part.Color = Color3.fromRGB(255, 215, 0) -- 황금색 구체
+		part.Size = Vector3.new(3.5, 3.5, 3.5) -- 이미지가 잘 보이게 크기 상향
+		part.Transparency = 1 -- 구체 자체를 투명하게
+		part.Material = Enum.Material.Plastic -- Neon의 빛 번짐 방지
+
+		applyDecals(part, itemName)
 	else
-		-- 장착 시 고유 모델
+		-- 장착 시 (플레이어 손에 들릴 때)
+		part.Transparency = 0
+		part.Material = Enum.Material.Neon
 		if itemName == "Hammer" then
 			part.Size = Vector3.new(2, 3, 2)
 			part.Color = Color3.fromRGB(150, 150, 150)
 		else
-			-- 구 모양 아이템(Glue, Swapper)은 손에서도 구 모양
 			part.Shape = Enum.PartType.Ball
 			part.Size = Vector3.new(1.5, 1.5, 1.5)
-			part.Color = (itemName == "Glue") and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(255, 100, 255)
+			-- 손에 들렸을 때만 색상 부여
+			part.Color = (itemName == "Glue") and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(170, 0, 255)
 		end
 	end
+
 	return part
 end
 

@@ -5,7 +5,7 @@ local ServerStorage = game:GetService('ServerStorage')
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local HexConstants = require(Shared:WaitForChild("HexConstants"))
-local ItemManager = require(script.Parent.ItemManager) -- [추가] 아이템 매니저 로드
+local ItemManager = require(script.Parent.ItemManager)
 
 local MapService = {}
 
@@ -154,35 +154,17 @@ function MapService.createLobby(winnerName, statsTable)
 	Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 10)
 
 	-- [테스트용] 구체 아이템 생성 (직접 Touched 연결 대신 태그 부여)
-	local items = {"Glue", "Swapper", "Hammer"}
+local items = {"Glue", "Swapper", "Hammer"}
 	for i, itemName in ipairs(items) do
-		local testSphere = Instance.new("Part")
+		local testSphere = ItemManager.createItemModel(itemName, true)
 		testSphere.Name = "TestItem_" .. itemName
-		testSphere.Shape = Enum.PartType.Ball
-		testSphere.Size = Vector3.new(3, 3, 3)
 		testSphere.Position = lobbyCenter + Vector3.new(-15 + (i * 10), 5, 10)
-		testSphere.Anchored = true
-		testSphere.CanCollide = false
-		testSphere.Color = Color3.fromRGB(255, 215, 0)
-		testSphere.Material = Enum.Material.Neon
 		testSphere.Parent = workspace
 
 		CollectionService:AddTag(testSphere, "ItemObject")
 		testSphere:SetAttribute("ItemType", itemName)
 		CollectionService:AddTag(testSphere, "LobbyTag")
-
-		local bgui = Instance.new("BillboardGui", testSphere)
-		bgui.Size = UDim2.new(4, 0, 1, 0)
-		bgui.AlwaysOnTop = true
-		bgui.StudsOffset = Vector3.new(0, 3, 0)
-		local label = Instance.new("TextLabel", bgui)
-		label.Size = UDim2.new(1, 0, 1, 0)
-		label.Text = itemName
-		label.TextColor3 = Color3.new(1, 1, 1)
-		label.BackgroundTransparency = 1
-		label.TextScaled = true
 	end
-
 	MapService.updateRanking(statsTable)
 end
 
@@ -225,32 +207,18 @@ function MapService.generateMap()
 				end
 
 				-- [아이템 생성] 필드 아이템 태그 부여 (Bat 제외)
-				if math.random(1, 100) <= HexConstants.ITEM_SPAWN_CHANCE then
-					local itemTypes = {"Glue", "Swapper", "Hammer"}
-					local selected = itemTypes[math.random(1, #itemTypes)]
+        if math.random(1, 100) <= HexConstants.ITEM_SPAWN_CHANCE then
+          local itemTypes = {"Glue", "Swapper", "Hammer"}
+          local selected = itemTypes[math.random(1, #itemTypes)]
 
-					local visual = Instance.new("Part")
-					visual.Name = "ItemSphere"
-					visual.Shape = Enum.PartType.Ball
-					visual.Size = Vector3.new(2.5, 2.5, 2.5)
-					visual.Position = Vector3.new(8.66 * 1.02 * (q + r/2), (HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE)) + 2.5, 10 * 0.75 * 1.02 * r)
-					visual.Anchored = true
-					visual.CanCollide = false
-					visual.Color = Color3.fromRGB(255, 215, 0)
-					visual.Material = Enum.Material.Neon
-					visual.Parent = newPart
+          local visual = ItemManager.createItemModel(selected, true)
+          visual.Name = "ItemSphere"
+          visual.Position = Vector3.new(8.66 * 1.02 * (q + r/2), (HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE)) + 2.5, 10 * 0.75 * 1.02 * r)
+          visual.Parent = newPart
 
-					CollectionService:AddTag(visual, "ItemObject")
-					visual:SetAttribute("ItemType", selected)
-
-					task.spawn(function()
-						while visual.Parent do
-							visual.CFrame = visual.CFrame * CFrame.Angles(0, math.rad(5), 0)
-							task.wait()
-						end
-					end)
-				end
-
+          CollectionService:AddTag(visual, "ItemObject")
+          visual:SetAttribute("ItemType", selected)
+        end
 				newPart.Position = Vector3.new(8.66 * 1.02 * (q + r/2), HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE), 10 * 0.75 * 1.02 * r)
 				newPart.Parent = floorFolder
 				newPart:SetAttribute("DelayTime", delayTime)

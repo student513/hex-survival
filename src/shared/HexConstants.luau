@@ -28,7 +28,13 @@ local HexConstants = {
 
 	GET_DELAY_TIME = function(floorLevel: number)
 		return 0.3 + (floorLevel - 1) * (0.7 / 7)
-	end
+	end,
+
+	ITEM_ICONS = {
+		Glue = "rbxassetid://121297864270651",
+		Swapper = "rbxassetid://89827382289584",
+		Hammer = "rbxassetid://109958366988278"
+	},
 }
 
 return HexConstants
