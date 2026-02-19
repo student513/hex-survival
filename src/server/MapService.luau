@@ -20,8 +20,8 @@ function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunnin
 		local gui = board:FindFirstChild("SurfaceGui")
 		if not gui then continue end
 
-		gui.Enabled = isMatchRunning
-		if not isMatchRunning then continue end
+		-- [수정] UI를 끄지 않고 항상 보이게 유지
+		gui.Enabled = true
 
 		local title = gui:FindFirstChild("TitleLabel")
 		if title then title.Text = "🏆 Last Winner: " .. (lastWinnerName or "None") end
@@ -35,6 +35,22 @@ function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunnin
 			local displayList = {}
 			for name, data in pairs(matchPoints) do
 				table.insert(displayList, {name = name, score = data.score, time = data.lastWinTime})
+			end
+
+			-- [추가] 표시할 플레이어 데이터가 없을 때 플레이스홀더 텍스트 렌더링
+			if #displayList == 0 then
+				local row = Instance.new("Frame", container)
+				row.Size = UDim2.new(1, 0, 0, 45)
+				row.BackgroundTransparency = 1
+
+				local placeholder = Instance.new("TextLabel", row)
+				placeholder.Size = UDim2.new(1, 0, 1, 0)
+				placeholder.Text = isMatchRunning and "- WAITING FOR RECORDS -" or "- WAITING FOR PLAYERS -"
+				placeholder.TextColor3 = Color3.fromRGB(150, 150, 150)
+				placeholder.BackgroundTransparency = 1
+				placeholder.Font = Enum.Font.GothamBold
+				placeholder.TextScaled = true
+				continue
 			end
 
 			table.sort(displayList, function(a, b)
@@ -77,7 +93,7 @@ end
 
 function MapService.createMainLobby()
 	local lobbyCenter = HexConstants.MAIN_LOBBY_POS
-	local lobbySize = 100 -- 사이즈 절반으로 축소
+	local lobbySize = 100
 	local wallHeight = 300
 	local parkourMaxHeight = lobbyCenter.Y + 200
 
@@ -93,7 +109,7 @@ function MapService.createMainLobby()
 	local board = Instance.new("Part")
 	board.Name = "MainMatchBoard"
 	board.Size = Vector3.new(40, 30, 1)
-	board.Position = lobbyCenter + Vector3.new(0, 15, 49) -- 벽 위치 조정
+	board.Position = lobbyCenter + Vector3.new(0, 15, 49)
 	board.Anchored = true
 	board.Color = Color3.fromRGB(15, 15, 15)
 	board.Parent = workspace
@@ -102,7 +118,8 @@ function MapService.createMainLobby()
 	gui.Name = "SurfaceGui"
 	gui.Face = Enum.NormalId.Front
 	gui.LightInfluence = 0
-	gui.Enabled = false
+	-- [수정] 생성 시 기본 상태를 true로 설정하여 텍스트가 즉시 보이게 함
+	gui.Enabled = true
 
 	local title = Instance.new("TextLabel", gui)
 	title.Name = "TitleLabel"
@@ -123,7 +140,7 @@ function MapService.createMainLobby()
 	local guideBoard = Instance.new("Part")
 	guideBoard.Name = "ItemGuideBoard"
 	guideBoard.Size = Vector3.new(1, 30, 40)
-	guideBoard.Position = lobbyCenter + Vector3.new(-49, 15, 0) -- 벽 위치 조정
+	guideBoard.Position = lobbyCenter + Vector3.new(-49, 15, 0)
 	guideBoard.Anchored = true
 	guideBoard.Color = Color3.fromRGB(15, 15, 15)
 	guideBoard.Parent = workspace
@@ -184,7 +201,6 @@ function MapService.createMainLobby()
 	local hexTemplate = ServerStorage:WaitForChild("HexPart")
 	local floor8Delay = HexConstants.GET_DELAY_TIME(8)
 
-	-- 시작 지점을 축소된 로비 반경(최대 50) 내에 맞춤
 	local currentPos = lobbyCenter + Vector3.new(math.random(-40, 40), 2, math.random(-40, 40))
 
 	while currentPos.Y < parkourMaxHeight do
@@ -215,7 +231,6 @@ function MapService.createMainLobby()
 			nextX = currentPos.X + math.cos(angle) * dist
 			nextZ = currentPos.Z + math.sin(angle) * dist
 
-			-- 발판이 생성되는 최대 반경 제한 (기존 90에서 45로 축소)
 			if math.abs(nextX - lobbyCenter.X) <= 45 and math.abs(nextZ - lobbyCenter.Z) <= 45 then
 				validPosition = true
 			end
