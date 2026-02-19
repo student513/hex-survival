@@ -46,13 +46,26 @@ UpdateStatus.OnClientEvent:Connect(function(state, val1, val2, val3, val4)
 		statusLabel.Visible, victoryLabel.Visible, defeatLabel.Visible, spectateLabel.Visible = true, false, false, false
 		statusLabel.Text = string.format("MAIN LOBBY\nWAITING FOR PLAYERS (%d / %d)", val1, val2)
 		isSpectating = false
-		Camera.CameraSubject = Player.Character:FindFirstChild("Humanoid")
+		if Player.Character then
+			Camera.CameraSubject = Player.Character:FindFirstChild("Humanoid")
+		end
 
 	elseif state == "MatchCountdown" then
 		statusLabel.Visible = true
 		statusLabel.Text = string.format("MATCH STARTING IN %d\n(%d / %d)", val1, val2, val3)
 
 	elseif state == "PreparingRound" then
+		-- [수정] 새 라운드 준비 시 관전 모드 즉시 해제 및 본인 시점 복구
+		isSpectating = false
+		spectateLabel.Visible = false
+		if Player.Character then
+			local myHum = Player.Character:FindFirstChild("Humanoid")
+			if myHum then
+				Camera.CameraType = Enum.CameraType.Custom
+				Camera.CameraSubject = myHum
+			end
+		end
+
 		statusLabel.Visible = true
 		local currentRound = val2
 		local activePlayers = val4

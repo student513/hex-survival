@@ -65,20 +65,30 @@ function ItemManager.giveItem(player: Player, itemName: string, floorPart: BaseP
 		local currentDelay = floorPart:GetAttribute("DelayTime") or 1.0
 		floorPart:SetAttribute("DelayTime", currentDelay * HexConstants.GLUE_MULTIPLIER)
 		floorPart.Color = Color3.fromRGB(150, 150, 255)
-	elseif itemName == "Swapper" then
+  elseif itemName == "Swapper" then
 		-- 위치 교환 로직 및 UI 신호 발송
 		local others = {}
 		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-				table.insert(others, p)
+			if p ~= player and p.Character then
+				local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
+				local targetHum = p.Character:FindFirstChild("Humanoid")
+
+				-- [수정] 타겟이 살아있는 상태(Health > 0)일 때만 스왑 명단에 추가
+				if targetRoot and targetHum and targetHum.Health > 0 then
+					table.insert(others, p)
+				end
 			end
 		end
+
+		-- 교환 가능한 생존자가 있을 경우에만 발동
 		if #others > 0 then
 			local target = others[math.random(1, #others)]
 			local targetRoot = target.Character.HumanoidRootPart
 			local myPos = root.CFrame
+
 			root.CFrame = targetRoot.CFrame
 			targetRoot.CFrame = myPos
+
 			UpdateStatus:FireClient(player, "Swapped")
 			UpdateStatus:FireClient(target, "Swapped")
 		end
