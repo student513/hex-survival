@@ -6,25 +6,23 @@ local HexConstants = {
 	START_HEIGHT = 100,
 	GRID_SIZE = 8,
 
-	MIN_PLAYERS = 1,
+	MIN_PLAYERS = 2, -- [수정] 기획에 맞춘 최소 인원 (테스트 시 2로 변경하세요)
 	MAX_PLAYERS = 12,
-	COUNTDOWN_TIME = 100,
-	INTERMISSION_TIME = 7,
+	COUNTDOWN_TIME = 10, -- 매치 시작 전 대기 카운트다운
+	INTERMISSION_TIME = 7, -- 라운드 사이 인터미션
+	MATCH_END_TIME = 10,
 
-	-- [아이템 밸런스 설정]
-	ITEM_SPAWN_CHANCE = 5,    -- 아이템 생성 확률 (%)
-	STUN_DURATION = 2,         -- 망치 스턴 지속 시간 (2초)
-	GLUE_MULTIPLIER = 1.5,     -- 접착제 소멸 시간 배율 (1.5배)
-	BAT_KNOCKBACK = 150,       -- 야구배트 밀치기 강도
+	MATCH_WIN_TARGET = 3, -- [수정] 3선승제
 
-	SPECIAL_FLOOR_CHANCE = 25,
+	-- [위치 설정]
+	MAIN_LOBBY_POS = Vector3.new(0, 300, 300), -- 맵과 분리된 메인 로비
+	GAME_LOBBY_POS = Vector3.new(0, 500, 0),   -- 맵 최상단 매치 로비
+	KILL_ZONE_Y = 20,
 
-	FLOOR_SETTINGS = {
-		Normal = { Color = Color3.fromRGB(163, 162, 165), Material = Enum.Material.Plastic },
-		Magma  = { Color = Color3.fromRGB(255, 80, 0), Material = Enum.Material.Neon },
-		Bounce = { Color = Color3.fromRGB(100, 255, 100), Material = Enum.Material.Rubber },
-		Turbo  = { Color = Color3.fromRGB(255, 255, 0), Material = Enum.Material.Neon }
-	},
+	ITEM_SPAWN_CHANCE = 2,
+	STUN_DURATION = 2,
+	GLUE_MULTIPLIER = 1.5,
+	SPECIAL_FLOOR_CHANCE = 10,
 
 	GET_DELAY_TIME = function(floorLevel: number)
 		return 0.3 + (floorLevel - 1) * (0.7 / 7)
@@ -36,5 +34,4 @@ local HexConstants = {
 		Hammer = "rbxassetid://109958366988278"
 	},
 }
-
 return HexConstants

@@ -9,77 +9,222 @@ local ItemManager = require(script.Parent.ItemManager)
 
 local MapService = {}
 
--- [Ranking UI 갱신] 기존 로직 유지
-function MapService.updateRanking(statsTable)
-	local board = workspace:FindFirstChild("Leaderboard", true)
-	if not board then return end
-	local gui = board:FindFirstChild("SurfaceGui")
-	local container = gui and gui:FindFirstChild("ScrollingFrame")
-	if not container then return end
+-- [추가/수정] 공통 전광판 업데이트 함수 (텍스트 정렬 및 스타일 완벽 복구)
+function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunning)
+	-- 메인 로비와 게임 로비의 전광판을 모두 찾습니다.
+	local boards = {
+		workspace:FindFirstChild("MainMatchBoard"),
+		workspace:FindFirstChild("GameMatchBoard")
+	}
 
-	for _, child in ipairs(container:GetChildren()) do
-		if child:IsA("Frame") then child:Destroy() end
-	end
+	for _, board in ipairs(boards) do
+		if not board then continue end
+		local gui = board:FindFirstChild("SurfaceGui")
+		if not gui then continue end
 
-	local displayList = {}
-	for _, player in ipairs(Players:GetPlayers()) do
-		local stats = statsTable[player.Name] or {wins = 0, lastWinTime = 0}
-		table.insert(displayList, {
-			name = player.Name,
-			wins = stats.wins,
-			lastWinTime = stats.lastWinTime
-		})
-	end
+		-- 매치 중이 아닐 때는 메인 로비 전광판 숨김
+		gui.Enabled = isMatchRunning
+		if not isMatchRunning then continue end
 
-	table.sort(displayList, function(a, b)
-		if a.wins ~= b.wins then return a.wins > b.wins end
-		if a.wins == 0 then return a.name:lower() < b.name:lower()
-		else return a.lastWinTime > b.lastWinTime end
-	end)
+		local title = gui:FindFirstChild("TitleLabel")
+		if title then title.Text = "🏆 Last Winner: " .. (lastWinnerName or "None") end
 
-	for i, data in ipairs(displayList) do
-		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, 0, 0, 45)
-		row.BackgroundTransparency = 1
-		row.Parent = container
+		local container = gui:FindFirstChild("ScrollingFrame")
+		if container then
+			-- 기존 목록 초기화
+			for _, child in ipairs(container:GetChildren()) do
+				if child:IsA("Frame") then child:Destroy() end
+			end
 
-		local rank = Instance.new("TextLabel", row)
-		rank.Size = UDim2.new(0.1, 0, 1, 0)
-		rank.Text = i .. "."
-		rank.TextXAlignment = Enum.TextXAlignment.Left
+			-- 점수 정렬 (점수 높은 순 -> 최근 획득 순)
+			local displayList = {}
+			for name, data in pairs(matchPoints) do
+				table.insert(displayList, {name = name, score = data.score, time = data.lastWinTime})
+			end
 
-		local nameLabel = Instance.new("TextLabel", row)
-		nameLabel.Size = UDim2.new(0.65, 0, 1, 0)
-		nameLabel.Position = UDim2.new(0.1, 0, 0, 0)
-		nameLabel.Text = data.name
-		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+			table.sort(displayList, function(a, b)
+				if a.score ~= b.score then return a.score > b.score end
+				return a.time > b.time
+			end)
 
-		local score = Instance.new("TextLabel", row)
-		score.Size = UDim2.new(0.25, 0, 1, 0)
-		score.Position = UDim2.new(0.75, 0, 0, 0)
-		score.Text = data.wins .. " pt"
-		score.TextXAlignment = Enum.TextXAlignment.Right
+			-- UI 렌더링
+			for i, data in ipairs(displayList) do
+				local row = Instance.new("Frame", container)
+				row.Size = UDim2.new(1, 0, 0, 45)
+				row.BackgroundTransparency = 1
 
-		for _, l in ipairs({rank, nameLabel, score}) do
-			l.TextColor3 = Color3.new(1,1,1)
-			l.BackgroundTransparency = 1
-			l.Font = Enum.Font.GothamBold
-			l.TextScaled = true
-			l.Parent = row
+				local rank = Instance.new("TextLabel", row)
+				rank.Size = UDim2.new(0.1, 0, 1, 0)
+				rank.Text = i .. "."
+				rank.TextColor3 = Color3.new(1,1,1)
+				rank.BackgroundTransparency = 1
+				rank.Font = Enum.Font.GothamBold
+				rank.TextScaled = true
+				rank.TextXAlignment = Enum.TextXAlignment.Left
+
+				local nameLabel = rank:Clone()
+				nameLabel.Size = UDim2.new(0.65, 0, 1, 0)
+				nameLabel.Position = UDim2.new(0.1, 0, 0, 0)
+				nameLabel.Text = data.name
+				nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+				nameLabel.Parent = row
+
+				local scoreLabel = rank:Clone()
+				scoreLabel.Size = UDim2.new(0.25, 0, 1, 0)
+				scoreLabel.Position = UDim2.new(0.75, 0, 0, 0)
+				scoreLabel.Text = data.score .. " pt"
+				scoreLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- 황금색
+				scoreLabel.TextXAlignment = Enum.TextXAlignment.Right
+				scoreLabel.Parent = row
+			end
 		end
-		score.TextColor3 = Color3.fromRGB(255, 215, 0)
 	end
 end
 
--- [대기실 생성] 테스트용 아이템 배치 로직 추가
-function MapService.createLobby(winnerName, statsTable)
-	local lobbyCenter = Vector3.new(0, 500, 0)
-	local lobbySize = 70
+-- 메인 로비 생성
+function MapService.createMainLobby()
+	local lobbyCenter = HexConstants.MAIN_LOBBY_POS
+	local lobbySize = 100
 	local wallHeight = 40
 
-	-- 바닥 생성
+	-- 1. 메인 로비 바닥 생성
 	local floor = Instance.new("Part")
-	floor.Size = Vector3.new(lobbySize, 1, lobbySize)
+	floor.Name = "MainLobbyFloor"
+	floor.Size = Vector3.new(lobbySize, 2, lobbySize)
+	floor.Position = lobbyCenter - Vector3.new(0, 1, 0)
+	floor.Anchored = true
+	floor.Color = Color3.fromRGB(30, 30, 30)
+	floor.Material = Enum.Material.Concrete
+	floor.Parent = workspace
+
+	-- 2. 메인 로비 매치 전광판 (남쪽 벽)
+	local board = Instance.new("Part")
+	board.Name = "MainMatchBoard"
+	board.Size = Vector3.new(40, 30, 1)
+	board.Position = lobbyCenter + Vector3.new(0, 15, 49)
+	board.Anchored = true
+	board.Color = Color3.fromRGB(15, 15, 15)
+	board.Parent = workspace
+
+	local gui = Instance.new("SurfaceGui", board)
+	gui.Name = "SurfaceGui"
+	gui.Face = Enum.NormalId.Front
+	gui.LightInfluence = 0
+	gui.Enabled = false
+
+	local title = Instance.new("TextLabel", gui)
+	title.Name = "TitleLabel"
+	title.Size = UDim2.new(1, 0, 0, 50)
+	title.BackgroundTransparency = 1
+	title.TextColor3 = Color3.fromRGB(150, 255, 150)
+	title.TextScaled = true
+	title.Font = Enum.Font.GothamBlack
+
+	local scroll = Instance.new("ScrollingFrame", gui)
+	scroll.Name = "ScrollingFrame"
+	scroll.Size = UDim2.new(1, -40, 1, -80)
+	scroll.Position = UDim2.new(0, 20, 0, 60)
+	scroll.BackgroundTransparency = 1
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 10)
+
+	-- ==========================================
+	-- 3. [추가] 아이템 가이드 전광판 (서쪽 벽)
+	-- ==========================================
+	local guideBoard = Instance.new("Part")
+	guideBoard.Name = "ItemGuideBoard"
+	guideBoard.Size = Vector3.new(1, 30, 40) -- 얇은 두께(X), 높이(Y), 너비(Z)
+	guideBoard.Position = lobbyCenter + Vector3.new(-49, 15, 0) -- 서쪽 끝에 배치
+	guideBoard.Anchored = true
+	guideBoard.Color = Color3.fromRGB(15, 15, 15)
+	guideBoard.Parent = workspace
+
+	local guideGui = Instance.new("SurfaceGui", guideBoard)
+	guideGui.Name = "SurfaceGui"
+	guideGui.Face = Enum.NormalId.Right -- 서쪽 벽에서 로비 중앙을 바라보도록 설정
+	guideGui.LightInfluence = 0
+
+	local guideTitle = Instance.new("TextLabel", guideGui)
+	guideTitle.Size = UDim2.new(1, 0, 0, 60)
+	guideTitle.BackgroundTransparency = 1
+	guideTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+	guideTitle.Text = "💡 ITEM GUIDE"
+	guideTitle.TextScaled = true
+	guideTitle.Font = Enum.Font.GothamBlack
+
+  local itemDescriptions = {
+		{
+			name = "Glue",
+			desc = "Extends the disappearance time of the stepped platform by 1.5x."
+		},
+		{
+			name = "Swapper",
+			desc = "Instantly swaps positions with a random surviving player."
+		},
+		{
+			name = "Hammer",
+			desc = "Stun other players for 2 seconds by hitting them after equipping."
+		}
+	}
+
+	local listFrame = Instance.new("Frame", guideGui)
+	listFrame.Size = UDim2.new(1, -40, 1, -80)
+	listFrame.Position = UDim2.new(0, 20, 0, 80)
+	listFrame.BackgroundTransparency = 1
+
+	local layout = Instance.new("UIListLayout", listFrame)
+	layout.Padding = UDim.new(0, 25)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	for i, info in ipairs(itemDescriptions) do
+		local row = Instance.new("Frame", listFrame)
+		row.Size = UDim2.new(1, 0, 0, 80)
+		row.BackgroundTransparency = 1
+		row.LayoutOrder = i
+
+		-- 아이템 아이콘 이미지
+		local icon = Instance.new("ImageLabel", row)
+		icon.Size = UDim2.new(0, 80, 0, 80)
+		icon.BackgroundTransparency = 1
+		icon.Image = HexConstants.ITEM_ICONS[info.name]
+
+		-- 아이템 설명 텍스트
+		local text = Instance.new("TextLabel", row)
+		text.Size = UDim2.new(1, -100, 1, 0)
+		text.Position = UDim2.new(0, 100, 0, 0)
+		text.BackgroundTransparency = 1
+		text.Text = info.desc
+		text.TextColor3 = Color3.new(1, 1, 1)
+		text.TextScaled = true
+		text.TextXAlignment = Enum.TextXAlignment.Left
+		text.Font = Enum.Font.GothamBold
+	end
+	-- ==========================================
+
+	-- 4. 투명 벽 생성
+	local wallData = {
+		{pos = Vector3.new(0, 20, 50), size = Vector3.new(100, 40, 1)},
+		{pos = Vector3.new(0, 20, -50), size = Vector3.new(100, 40, 1)},
+		{pos = Vector3.new(50, 20, 0), size = Vector3.new(1, 40, 100)},
+		{pos = Vector3.new(-50, 20, 0), size = Vector3.new(1, 40, 100)}
+	}
+	for _, data in ipairs(wallData) do
+		local wall = Instance.new("Part")
+		wall.Size = data.size
+		wall.Position = floor.Position + data.pos
+		wall.Anchored = true
+		wall.Transparency = 0.7
+		wall.Material = Enum.Material.Glass
+		wall.Parent = workspace
+	end
+	print("🏠 메인 로비 생성 완료 (위치: 남쪽 300, 높이 400)")
+end
+
+-- [수정] 게임 로비 생성
+function MapService.createLobby()
+	local lobbyCenter = HexConstants.GAME_LOBBY_POS - Vector3.new(0, 5, 0)
+	local floor = Instance.new("Part")
+	floor.Size = Vector3.new(70, 1, 70)
 	floor.Position = lobbyCenter
 	floor.Anchored = true
 	floor.Parent = workspace
@@ -87,10 +232,10 @@ function MapService.createLobby(winnerName, statsTable)
 
 	-- 벽 생성
 	local wallData = {
-		{pos = Vector3.new(0, wallHeight/2, lobbySize/2), size = Vector3.new(lobbySize, wallHeight, 1)},
-		{pos = Vector3.new(0, wallHeight/2, -lobbySize/2), size = Vector3.new(lobbySize, wallHeight, 1)},
-		{pos = Vector3.new(lobbySize/2, wallHeight/2, 0), size = Vector3.new(1, wallHeight, lobbySize)},
-		{pos = Vector3.new(-lobbySize/2, wallHeight/2, 0), size = Vector3.new(1, wallHeight, lobbySize)}
+		{pos = Vector3.new(0, 20, 35), size = Vector3.new(70, 40, 1)},
+		{pos = Vector3.new(0, 20, -35), size = Vector3.new(70, 40, 1)},
+		{pos = Vector3.new(35, 20, 0), size = Vector3.new(1, 40, 70)},
+		{pos = Vector3.new(-35, 20, 0), size = Vector3.new(1, 40, 70)}
 	}
 	for _, data in ipairs(wallData) do
 		local wall = Instance.new("Part")
@@ -102,73 +247,38 @@ function MapService.createLobby(winnerName, statsTable)
 		CollectionService:AddTag(wall, "LobbyTag")
 	end
 
-	-- 명예의 전당 및 리더보드 생성
-	local hof = Instance.new("Part")
-	hof.Name = "HallOfFame"
-	hof.Size = Vector3.new(25, 12, 1)
-	hof.Position = lobbyCenter + Vector3.new(0, 15, 34.4)
-	hof.Anchored = true
-	hof.Color = Color3.fromRGB(30, 30, 30)
-	hof.Parent = workspace
-	CollectionService:AddTag(hof, "LobbyTag")
+	-- [핵심] 게임 로비 전광판 생성 및 Face 속성 수정
+	local board = Instance.new("Part")
+	board.Name = "GameMatchBoard"
+	board.Size = Vector3.new(40, 30, 1)
+	board.Position = lobbyCenter + Vector3.new(0, 15, -34)
+	board.Anchored = true
+	board.Color = Color3.fromRGB(15, 15, 15)
+	board.Parent = workspace
+	CollectionService:AddTag(board, "LobbyTag")
 
-	local hofGui = Instance.new("SurfaceGui", hof)
-	hofGui.Face = Enum.NormalId.Front
-	local hofLabel = Instance.new("TextLabel", hofGui)
-	hofLabel.Size = UDim2.new(1, 0, 1, 0)
-	hofLabel.Text = "🏆 LAST WINNER: " .. (winnerName or "None")
-	hofLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	hofLabel.TextScaled = true
-	hofLabel.BackgroundTransparency = 1
-	hofLabel.Font = Enum.Font.GothamBold
+	local gui = Instance.new("SurfaceGui", board)
+	gui.Name = "SurfaceGui"
+	gui.Face = Enum.NormalId.Back -- [수정]
+	gui.LightInfluence = 0        -- [수정]
 
-	local lb = Instance.new("Part")
-	lb.Name = "Leaderboard"
-	lb.Size = Vector3.new(40, 30, 1)
-	lb.Position = lobbyCenter + Vector3.new(0, 15, -34.4)
-	lb.Anchored = true
-	lb.Color = Color3.fromRGB(20, 20, 20)
-	lb.Parent = workspace
-	CollectionService:AddTag(lb, "LobbyTag")
-
-	local lbGui = Instance.new("SurfaceGui", lb)
-	lbGui.Face = Enum.NormalId.Back
-	lbGui.LightInfluence = 0
-
-	local title = Instance.new("TextLabel", lbGui)
-	title.Size = UDim2.new(1, 0, 0, 60)
-	title.Text = "Ranking"
-	title.Font = Enum.Font.GothamBlack
-	title.TextColor3 = Color3.new(1,1,1)
-	title.TextScaled = true
+	local title = Instance.new("TextLabel", gui)
+	title.Name = "TitleLabel"
+	title.Size = UDim2.new(1, 0, 0, 50)
 	title.BackgroundTransparency = 1
+	title.TextColor3 = Color3.fromRGB(150, 255, 150)
+	title.TextScaled = true
+	title.Font = Enum.Font.GothamBlack
 
-	local scroll = Instance.new("ScrollingFrame", lbGui)
+	local scroll = Instance.new("ScrollingFrame", gui)
 	scroll.Name = "ScrollingFrame"
-	scroll.Size = UDim2.new(1, -40, 1, -100)
-	scroll.Position = UDim2.new(0, 20, 0, 80)
+	scroll.Size = UDim2.new(1, -40, 1, -80)
+	scroll.Position = UDim2.new(0, 20, 0, 60)
 	scroll.BackgroundTransparency = 1
-	scroll.CanvasSize = UDim2.new(0,0,0,0)
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	scroll.ScrollBarThickness = 0
 	Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 10)
-
-	-- [테스트용] 구체 아이템 생성 (직접 Touched 연결 대신 태그 부여)
-local items = {"Glue", "Swapper", "Hammer"}
-	for i, itemName in ipairs(items) do
-		local testSphere = ItemManager.createItemModel(itemName, true)
-		testSphere.Name = "TestItem_" .. itemName
-		testSphere.Position = lobbyCenter + Vector3.new(-15 + (i * 10), 5, 10)
-		testSphere.Parent = workspace
-
-		CollectionService:AddTag(testSphere, "ItemObject")
-		testSphere:SetAttribute("ItemType", itemName)
-		CollectionService:AddTag(testSphere, "LobbyTag")
-	end
-	MapService.updateRanking(statsTable)
 end
 
--- [맵 생성] 아이템 스폰 로직 통합
 function MapService.generateMap()
 	local oldMap = workspace:FindFirstChild("Map")
 	if oldMap then oldMap:Destroy() end
@@ -197,7 +307,6 @@ function MapService.generateMap()
 				local newPart = hexTemplate:Clone()
 				CollectionService:AddTag(newPart, "HexPlatform")
 
-				-- 발판 시각적 설정
 				if typeName == "Magma" then
 					newPart.Color = Color3.fromRGB(255, 80, 0); newPart.Material = Enum.Material.Neon
 				elseif typeName == "Bounce" then
@@ -206,19 +315,16 @@ function MapService.generateMap()
 					newPart.Color = Color3.fromRGB(255, 255, 0); newPart.Material = Enum.Material.Neon
 				end
 
-				-- [아이템 생성] 필드 아이템 태그 부여 (Bat 제외)
-        if math.random(1, 100) <= HexConstants.ITEM_SPAWN_CHANCE then
-          local itemTypes = {"Glue", "Swapper", "Hammer"}
-          local selected = itemTypes[math.random(1, #itemTypes)]
+				if math.random(1, 100) <= HexConstants.ITEM_SPAWN_CHANCE then
+					local itemTypes = {"Glue", "Swapper", "Hammer"}
+					local selected = itemTypes[math.random(1, #itemTypes)]
+					local visual = ItemManager.createItemModel(selected, true)
+					visual.Position = Vector3.new(8.66 * 1.02 * (q + r/2), (HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE)) + 2.5, 10 * 0.75 * 1.02 * r)
+					visual.Parent = newPart
+					CollectionService:AddTag(visual, "ItemObject")
+					visual:SetAttribute("ItemType", selected)
+				end
 
-          local visual = ItemManager.createItemModel(selected, true)
-          visual.Name = "ItemSphere"
-          visual.Position = Vector3.new(8.66 * 1.02 * (q + r/2), (HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE)) + 2.5, 10 * 0.75 * 1.02 * r)
-          visual.Parent = newPart
-
-          CollectionService:AddTag(visual, "ItemObject")
-          visual:SetAttribute("ItemType", selected)
-        end
 				newPart.Position = Vector3.new(8.66 * 1.02 * (q + r/2), HexConstants.START_HEIGHT + (floor * HexConstants.FLOOR_DISTANCE), 10 * 0.75 * 1.02 * r)
 				newPart.Parent = floorFolder
 				newPart:SetAttribute("DelayTime", delayTime)
@@ -230,7 +336,7 @@ end
 function MapService.createKillZone()
 	local kill = Instance.new("Part")
 	kill.Size = Vector3.new(2048, 2, 2048)
-	kill.Position = Vector3.new(0, 20, 0)
+	kill.Position = Vector3.new(0, HexConstants.KILL_ZONE_Y, 0)
 	kill.Anchored = true
 	kill.CanCollide = false
 	kill.Transparency = 1

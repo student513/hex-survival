@@ -1,20 +1,25 @@
 local Players = game:GetService("Players")
 local LeaderManager = {}
 
--- 1등 플레이어 머리 위에 왕관을 씌우는 기능
-function LeaderManager.updateCrown(playerStats)
+function LeaderManager.updateCrown(matchPoints)
 	local leaderPlayer = nil
 	local maxWins = 0
+	local latestTime = 0
 
-	-- 1. 현재 접속자 중 가장 승수가 많은 플레이어 확인
-	for name, stats in pairs(playerStats) do
-		if stats.wins > maxWins then
-			maxWins = stats.wins
+	-- [수정] 동점자 발생 시 가장 최근 득점자 선별 로직
+	for name, data in pairs(matchPoints) do
+		if data.score > maxWins then
+			maxWins = data.score
+			latestTime = data.lastWinTime
 			leaderPlayer = Players:FindFirstChild(name)
+		elseif data.score == maxWins and maxWins > 0 then
+			if data.lastWinTime > latestTime then
+				latestTime = data.lastWinTime
+				leaderPlayer = Players:FindFirstChild(name)
+			end
 		end
 	end
 
-	-- 2. 모든 플레이어 캐릭터에서 기존 왕관 제거
 	for _, player in ipairs(Players:GetPlayers()) do
 		local char = player.Character
 		if char then
@@ -23,7 +28,6 @@ function LeaderManager.updateCrown(playerStats)
 		end
 	end
 
-	-- 3. 1등이 존재하고 점수가 1점 이상이면 왕관 생성
 	if leaderPlayer and leaderPlayer.Character and maxWins > 0 then
 		local head = leaderPlayer.Character:FindFirstChild("Head")
 		if head then
@@ -32,7 +36,7 @@ function LeaderManager.updateCrown(playerStats)
 			billboard.Size = UDim2.new(2, 0, 2, 0)
 			billboard.StudsOffset = Vector3.new(0, 3, 0)
 			billboard.Adornee = head
-			billboard.AlwaysOnTop = true -- 다른 층에 있어도 표적임을 알 수 있게 함
+			billboard.AlwaysOnTop = true
 			billboard.Parent = leaderPlayer.Character
 
 			local textLabel = Instance.new("TextLabel")
@@ -41,6 +45,16 @@ function LeaderManager.updateCrown(playerStats)
 			textLabel.Text = "👑"
 			textLabel.TextScaled = true
 			textLabel.Parent = billboard
+		end
+	end
+end
+
+function LeaderManager.clearCrown()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local char = player.Character
+		if char then
+			local crown = char:FindFirstChild("LeaderCrown")
+			if crown then crown:Destroy() end
 		end
 	end
 end
