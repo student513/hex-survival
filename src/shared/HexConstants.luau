@@ -15,7 +15,7 @@ local HexConstants = {
 	MATCH_WIN_TARGET = 3, -- [수정] 3선승제
 
 	-- [위치 설정]
-	MAIN_LOBBY_POS = Vector3.new(0, 300, 300), -- 맵과 분리된 메인 로비
+	MAIN_LOBBY_POS = Vector3.new(0, 100, 200), -- 맵과 분리된 메인 로비
 	GAME_LOBBY_POS = Vector3.new(0, 500, 0),   -- 맵 최상단 매치 로비
 	KILL_ZONE_Y = 20,
 

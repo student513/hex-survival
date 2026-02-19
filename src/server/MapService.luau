@@ -9,9 +9,7 @@ local ItemManager = require(script.Parent.ItemManager)
 
 local MapService = {}
 
--- [추가/수정] 공통 전광판 업데이트 함수 (텍스트 정렬 및 스타일 완벽 복구)
 function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunning)
-	-- 메인 로비와 게임 로비의 전광판을 모두 찾습니다.
 	local boards = {
 		workspace:FindFirstChild("MainMatchBoard"),
 		workspace:FindFirstChild("GameMatchBoard")
@@ -22,7 +20,6 @@ function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunnin
 		local gui = board:FindFirstChild("SurfaceGui")
 		if not gui then continue end
 
-		-- 매치 중이 아닐 때는 메인 로비 전광판 숨김
 		gui.Enabled = isMatchRunning
 		if not isMatchRunning then continue end
 
@@ -31,12 +28,10 @@ function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunnin
 
 		local container = gui:FindFirstChild("ScrollingFrame")
 		if container then
-			-- 기존 목록 초기화
 			for _, child in ipairs(container:GetChildren()) do
 				if child:IsA("Frame") then child:Destroy() end
 			end
 
-			-- 점수 정렬 (점수 높은 순 -> 최근 획득 순)
 			local displayList = {}
 			for name, data in pairs(matchPoints) do
 				table.insert(displayList, {name = name, score = data.score, time = data.lastWinTime})
@@ -47,7 +42,6 @@ function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunnin
 				return a.time > b.time
 			end)
 
-			-- UI 렌더링
 			for i, data in ipairs(displayList) do
 				local row = Instance.new("Frame", container)
 				row.Size = UDim2.new(1, 0, 0, 45)
@@ -73,7 +67,7 @@ function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunnin
 				scoreLabel.Size = UDim2.new(0.25, 0, 1, 0)
 				scoreLabel.Position = UDim2.new(0.75, 0, 0, 0)
 				scoreLabel.Text = data.score .. " pt"
-				scoreLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- 황금색
+				scoreLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 				scoreLabel.TextXAlignment = Enum.TextXAlignment.Right
 				scoreLabel.Parent = row
 			end
@@ -81,13 +75,12 @@ function MapService.updateMatchBoards(matchPoints, lastWinnerName, isMatchRunnin
 	end
 end
 
--- 메인 로비 생성
 function MapService.createMainLobby()
 	local lobbyCenter = HexConstants.MAIN_LOBBY_POS
-	local lobbySize = 100
-	local wallHeight = 40
+	local lobbySize = 100 -- 사이즈 절반으로 축소
+	local wallHeight = 300
+	local parkourMaxHeight = lobbyCenter.Y + 200
 
-	-- 1. 메인 로비 바닥 생성
 	local floor = Instance.new("Part")
 	floor.Name = "MainLobbyFloor"
 	floor.Size = Vector3.new(lobbySize, 2, lobbySize)
@@ -97,11 +90,10 @@ function MapService.createMainLobby()
 	floor.Material = Enum.Material.Concrete
 	floor.Parent = workspace
 
-	-- 2. 메인 로비 매치 전광판 (남쪽 벽)
 	local board = Instance.new("Part")
 	board.Name = "MainMatchBoard"
 	board.Size = Vector3.new(40, 30, 1)
-	board.Position = lobbyCenter + Vector3.new(0, 15, 49)
+	board.Position = lobbyCenter + Vector3.new(0, 15, 49) -- 벽 위치 조정
 	board.Anchored = true
 	board.Color = Color3.fromRGB(15, 15, 15)
 	board.Parent = workspace
@@ -128,20 +120,17 @@ function MapService.createMainLobby()
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 10)
 
-	-- ==========================================
-	-- 3. [추가] 아이템 가이드 전광판 (서쪽 벽)
-	-- ==========================================
 	local guideBoard = Instance.new("Part")
 	guideBoard.Name = "ItemGuideBoard"
-	guideBoard.Size = Vector3.new(1, 30, 40) -- 얇은 두께(X), 높이(Y), 너비(Z)
-	guideBoard.Position = lobbyCenter + Vector3.new(-49, 15, 0) -- 서쪽 끝에 배치
+	guideBoard.Size = Vector3.new(1, 30, 40)
+	guideBoard.Position = lobbyCenter + Vector3.new(-49, 15, 0) -- 벽 위치 조정
 	guideBoard.Anchored = true
 	guideBoard.Color = Color3.fromRGB(15, 15, 15)
 	guideBoard.Parent = workspace
 
 	local guideGui = Instance.new("SurfaceGui", guideBoard)
 	guideGui.Name = "SurfaceGui"
-	guideGui.Face = Enum.NormalId.Right -- 서쪽 벽에서 로비 중앙을 바라보도록 설정
+	guideGui.Face = Enum.NormalId.Right
 	guideGui.LightInfluence = 0
 
 	local guideTitle = Instance.new("TextLabel", guideGui)
@@ -152,19 +141,10 @@ function MapService.createMainLobby()
 	guideTitle.TextScaled = true
 	guideTitle.Font = Enum.Font.GothamBlack
 
-  local itemDescriptions = {
-		{
-			name = "Glue",
-			desc = "Extends the disappearance time of the stepped platform by 1.5x."
-		},
-		{
-			name = "Swapper",
-			desc = "Instantly swaps positions with a random surviving player."
-		},
-		{
-			name = "Hammer",
-			desc = "Stun other players for 2 seconds by hitting them after equipping."
-		}
+	local itemDescriptions = {
+		{ name = "Glue", desc = "Extends the disappearance time of the stepped platform by 1.5x." },
+		{ name = "Swapper", desc = "Instantly swaps positions with a random surviving player." },
+		{ name = "Hammer", desc = "Stun other players for 2 seconds by hitting them after equipping." }
 	}
 
 	local listFrame = Instance.new("Frame", guideGui)
@@ -182,13 +162,11 @@ function MapService.createMainLobby()
 		row.BackgroundTransparency = 1
 		row.LayoutOrder = i
 
-		-- 아이템 아이콘 이미지
 		local icon = Instance.new("ImageLabel", row)
 		icon.Size = UDim2.new(0, 80, 0, 80)
 		icon.BackgroundTransparency = 1
 		icon.Image = HexConstants.ITEM_ICONS[info.name]
 
-		-- 아이템 설명 텍스트
 		local text = Instance.new("TextLabel", row)
 		text.Size = UDim2.new(1, -100, 1, 0)
 		text.Position = UDim2.new(0, 100, 0, 0)
@@ -199,28 +177,86 @@ function MapService.createMainLobby()
 		text.TextXAlignment = Enum.TextXAlignment.Left
 		text.Font = Enum.Font.GothamBold
 	end
-	-- ==========================================
 
-	-- 4. 투명 벽 생성
+	local parkourFolder = Instance.new("Folder", workspace)
+	parkourFolder.Name = "ParkourCourse"
+
+	local hexTemplate = ServerStorage:WaitForChild("HexPart")
+	local floor8Delay = HexConstants.GET_DELAY_TIME(8)
+
+	-- 시작 지점을 축소된 로비 반경(최대 50) 내에 맞춤
+	local currentPos = lobbyCenter + Vector3.new(math.random(-40, 40), 2, math.random(-40, 40))
+
+	while currentPos.Y < parkourMaxHeight do
+		local part = hexTemplate:Clone()
+		CollectionService:AddTag(part, "HexPlatform")
+
+		part.Position = currentPos
+		part.Anchored = true
+		part:SetAttribute("IsParkour", true)
+		part:SetAttribute("DelayTime", floor8Delay)
+		part.Color = Color3.fromRGB(0, 170, 255)
+		part:SetAttribute("OriginalColor", part.Color)
+		part.Parent = parkourFolder
+
+		local maxJumpHeight = 6
+		local minJumpHeight = 4
+		local maxHorizontalDist = 12
+		local minHorizontalDist = 8
+
+		local nextY = currentPos.Y + math.random(minJumpHeight, maxJumpHeight)
+		local nextX, nextZ
+		local validPosition = false
+
+		while not validPosition do
+			local angle = math.random() * math.pi * 2
+			local dist = math.random(minHorizontalDist, maxHorizontalDist)
+
+			nextX = currentPos.X + math.cos(angle) * dist
+			nextZ = currentPos.Z + math.sin(angle) * dist
+
+			-- 발판이 생성되는 최대 반경 제한 (기존 90에서 45로 축소)
+			if math.abs(nextX - lobbyCenter.X) <= 45 and math.abs(nextZ - lobbyCenter.Z) <= 45 then
+				validPosition = true
+			end
+		end
+
+		currentPos = Vector3.new(nextX, nextY, nextZ)
+
+		if currentPos.Y >= parkourMaxHeight then
+			local goalPart = hexTemplate:Clone()
+			CollectionService:AddTag(goalPart, "HexPlatform")
+			goalPart.Position = currentPos
+			goalPart.Anchored = true
+			goalPart:SetAttribute("IsParkour", true)
+			goalPart:SetAttribute("IsParkourGoal", true)
+			goalPart:SetAttribute("DelayTime", floor8Delay)
+			goalPart.Color = Color3.fromRGB(255, 215, 0)
+			goalPart:SetAttribute("OriginalColor", goalPart.Color)
+			goalPart.Parent = parkourFolder
+			break
+		end
+	end
+
+	local half = lobbySize / 2
 	local wallData = {
-		{pos = Vector3.new(0, 20, 50), size = Vector3.new(100, 40, 1)},
-		{pos = Vector3.new(0, 20, -50), size = Vector3.new(100, 40, 1)},
-		{pos = Vector3.new(50, 20, 0), size = Vector3.new(1, 40, 100)},
-		{pos = Vector3.new(-50, 20, 0), size = Vector3.new(1, 40, 100)}
+		{pos = Vector3.new(0, wallHeight/2, half), size = Vector3.new(lobbySize, wallHeight, 1)},
+		{pos = Vector3.new(0, wallHeight/2, -half), size = Vector3.new(lobbySize, wallHeight, 1)},
+		{pos = Vector3.new(half, wallHeight/2, 0), size = Vector3.new(1, wallHeight, lobbySize)},
+		{pos = Vector3.new(-half, wallHeight/2, 0), size = Vector3.new(1, wallHeight, lobbySize)}
 	}
 	for _, data in ipairs(wallData) do
 		local wall = Instance.new("Part")
 		wall.Size = data.size
 		wall.Position = floor.Position + data.pos
 		wall.Anchored = true
-		wall.Transparency = 0.7
+		wall.Transparency = 0.8
 		wall.Material = Enum.Material.Glass
 		wall.Parent = workspace
 	end
-	print("🏠 메인 로비 생성 완료 (위치: 남쪽 300, 높이 400)")
+	print("🏠 메인 로비 생성 완료 (위치: 남쪽 300, 높이 300, 크기 100)")
 end
 
--- [수정] 게임 로비 생성
 function MapService.createLobby()
 	local lobbyCenter = HexConstants.GAME_LOBBY_POS - Vector3.new(0, 5, 0)
 	local floor = Instance.new("Part")
@@ -230,7 +266,6 @@ function MapService.createLobby()
 	floor.Parent = workspace
 	CollectionService:AddTag(floor, "LobbyTag")
 
-	-- 벽 생성
 	local wallData = {
 		{pos = Vector3.new(0, 20, 35), size = Vector3.new(70, 40, 1)},
 		{pos = Vector3.new(0, 20, -35), size = Vector3.new(70, 40, 1)},
@@ -247,7 +282,6 @@ function MapService.createLobby()
 		CollectionService:AddTag(wall, "LobbyTag")
 	end
 
-	-- [핵심] 게임 로비 전광판 생성 및 Face 속성 수정
 	local board = Instance.new("Part")
 	board.Name = "GameMatchBoard"
 	board.Size = Vector3.new(40, 30, 1)
@@ -259,8 +293,8 @@ function MapService.createLobby()
 
 	local gui = Instance.new("SurfaceGui", board)
 	gui.Name = "SurfaceGui"
-	gui.Face = Enum.NormalId.Back -- [수정]
-	gui.LightInfluence = 0        -- [수정]
+	gui.Face = Enum.NormalId.Back
+	gui.LightInfluence = 0
 
 	local title = Instance.new("TextLabel", gui)
 	title.Name = "TitleLabel"
@@ -308,11 +342,14 @@ function MapService.generateMap()
 				CollectionService:AddTag(newPart, "HexPlatform")
 
 				if typeName == "Magma" then
-					newPart.Color = Color3.fromRGB(255, 80, 0); newPart.Material = Enum.Material.Neon
+					newPart.Color = Color3.fromRGB(255, 80, 0)
+					newPart.Material = Enum.Material.Neon
 				elseif typeName == "Bounce" then
-					newPart.Color = Color3.fromRGB(100, 255, 100); newPart.Material = Enum.Material.Rubber
+					newPart.Color = Color3.fromRGB(100, 255, 100)
+					newPart.Material = Enum.Material.Rubber
 				elseif typeName == "Turbo" then
-					newPart.Color = Color3.fromRGB(255, 255, 0); newPart.Material = Enum.Material.Neon
+					newPart.Color = Color3.fromRGB(255, 255, 0)
+					newPart.Material = Enum.Material.Neon
 				end
 
 				if math.random(1, 100) <= HexConstants.ITEM_SPAWN_CHANCE then
