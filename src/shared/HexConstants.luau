@@ -6,7 +6,7 @@ local HexConstants = {
 	START_HEIGHT = 100,
 	GRID_SIZE = 8,
 
-	MIN_PLAYERS = 2, -- [수정] 기획에 맞춘 최소 인원 (테스트 시 2로 변경하세요)
+	MIN_PLAYERS = 8, -- [수정] 기획에 맞춘 최소 인원 (테스트 시 2로 변경하세요)
 	MAX_PLAYERS = 12,
 	COUNTDOWN_TIME = 10, -- 매치 시작 전 대기 카운트다운
 	INTERMISSION_TIME = 7, -- 라운드 사이 인터미션
